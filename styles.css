@@ -346,6 +346,10 @@ h1, h2, h3, p { margin-top: 0; }
   .journal-entry__meta { grid-column: 2; flex-direction: row; align-items: center; text-align: left; }
 }
 
+@media (max-width: 350px) {
+  .topbar__island { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
