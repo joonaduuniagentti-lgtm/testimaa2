@@ -2,7 +2,7 @@
 
 ## Tuote
 
-Kantama on selaimessa pelattava, vuoropohjainen tähtivaltakunnan simulaatio. Pelaaja aloittaa yhden siirtokunnan ja pienen tutkimuslaivueen kanssa. Hän laajentaa tunnettua galaksia retkikunnilla, rakentaa tuotantoketjuja, asuttaa elinkelpoisia maailmoja, ohjaa teknologista kehitystä ja neuvottelee neljän itsenäisen vallan kanssa. Galaksi reagoi jokaiseen kuukauteen: siirtokunnat tuottavat, väestö kasvaa tai levottomuus lisääntyy, tekoälyvaltiot laajenevat, laivastot liikkuvat ja tapahtumat muuttavat suunnitelmia.
+Kantama on selaimessa pelattava, vuoropohjainen tähtivaltakunnan simulaatio. Pelaaja aloittaa yhden siirtokunnan ja pienen tutkimuslaivueen kanssa. Hän laajentaa tunnettua galaksia retkikunnilla, kehittää maailmojen tuotantoa, asuttaa elinkelpoisia planeettoja, ohjaa teknologista kehitystä ja neuvottelee neljän itsenäisen vallan kanssa. Galaksi reagoi jokaiseen kuukauteen: siirtokunnat tuottavat, väestö kasvaa tai levottomuus lisääntyy, tekoälyvaltiot laajenevat, laivastot liikkuvat ja tapahtumat muuttavat suunnitelmia.
 
 Tavoite ei ole yksi irrallinen näkymä vaan pelattava strategiasilmukka, jonka voi aloittaa, tallentaa, jatkaa, viedä tiedostoon ja voittaa usealla tavalla.
 
@@ -34,7 +34,7 @@ Tavoite ei ole yksi irrallinen näkymä vaan pelattava strategiasilmukka, jonka 
 - src/actions.js: pelaajan komennot, kustannus- ja kelpoisuussäännöt.
 - src/simulation.js: kuukauden siirtymä, talous, väestö, AI, laivueet, tapahtumat ja voitot.
 - src/storage.js: skeemaversioitu paikallistallennus sekä tuonti ja vienti.
-- src/galaxy-map.js: responsiivinen Canvas-kartta, pan/zoom ja järjestelmän valinta.
+- src/galaxy-map.js: responsiivinen SVG-kartta, pan/zoom ja järjestelmän valinta.
 - src/charts.js: taloushistorian piirtäminen ilman ulkoisia kirjastoja.
 - src/view.js: saavutettava HTML-näkymä jokaiselle komentokeskuksen osalle.
 - src/main.js: tapahtumien sidonta ja näkymän sekä pelitilan yhteensovitus.
@@ -46,7 +46,7 @@ Toteutus on riippumaton ulkoisista kirjastoista ja API-palveluista. Samaa puhdas
 
 1. **Rajaa maailma ja testattavat säännöt.** Määrittele skeema, siemenpohjainen satunnaisuus, galaksin verkko ja talouden yksikkötestattavat funktiot.
 2. **Luo galaksi.** Generoi 42 ainutkertaista maailmaa, reitit, löydettävyys, resurssipotentiaali ja viisi valtaa.
-3. **Tee komentotalous.** Toteuta tuotantoketjut, resurssikustannukset, väestö, vakaus, veropolitiikka ja tutkimuksen eteneminen.
+3. **Tee komentotalous.** Toteuta rakennusten tuotantovaikutukset, resurssikustannukset, väestö, vakaus, veropolitiikka ja tutkimuksen eteneminen.
 4. **Lisää liike ja valtapeli.** Toteuta reitinhaku, tutkimusretket, laivastojen liike, tekoälyvaltioiden päätökset ja diplomatia.
 5. **Rakenna tapahtumajärjestelmä ja voitot.** Kymmenen tapahtumaa tarjoavat erilaisia valintoja; kriisipäätös estää tyhjään varastoon lukkiutumisen. Voittopolut vaativat mitattavia, samanaikaisia ehtoja.
 6. **Tee komentokeskus.** Rakenna kartta, tilannekuva, siirtokunnat, teknologiat, diplomatia, laivastot ja kronikka omiksi näkymikseen.
@@ -72,4 +72,4 @@ Toteutus on riippumaton ulkoisista kirjastoista ja API-palveluista. Samaa puhdas
 - Tämä on yksinpelattava simulaatio, ei verkkopeli. Tallennus ja tekoäly jäävät käyttäjän selaimeen.
 - 42 järjestelmää ja vuoropohjainen eteneminen pitävät generoinnin ymmärrettävänä; peli ei yritä olla rajaton universumi.
 - Puolustus on strateginen rajapaineen ja varuskunnan voimavertailu, ei taktinen taisteluruutu. Alueiden valtaaminen tai sotilaallinen kampanja jää jatkokehitykseen.
-- Canvas piirtää kartan itse, jotta projekti säilyy riippuvuudettomana ja julkaistavana staattisena sivuna.
+- SVG piirtää kartan ilman kolmannen osapuolen riippuvuuksia, joten projekti säilyy julkaistavana staattisena sivuna.

@@ -1,6 +1,6 @@
 # KANTAMA
 
-Selainpohjainen tähtivaltakunnan strategiasimulaatio. Johda yhtä nuorta valtiota läpi galaksin ensimmäisen laajentumiskauden: kartoita tuntemattomia järjestelmiä, perusta siirtokuntia, rakenna tuotantoketjuja, ohjaa tutkimusta ja neuvottele neljän kilpailevan sivilisaation kanssa.
+Selainpohjainen tähtivaltakunnan strategiasimulaatio. Johda yhtä nuorta valtiota läpi galaksin ensimmäisen laajentumiskauden: kartoita tuntemattomia järjestelmiä, perusta siirtokuntia, kehitä maailmojen tuotantoa, ohjaa tutkimusta ja neuvottele neljän kilpailevan sivilisaation kanssa.
 
 ## Pelaa
 
