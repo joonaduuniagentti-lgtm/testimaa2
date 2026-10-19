@@ -21,9 +21,14 @@ function persist() {
 function render() {
   app.innerHTML = renderApp(game);
   app.querySelectorAll("[data-map-root]").forEach((root) => {
-    mountGalaxyMap(root, game, (systemId) => {
+    mountGalaxyMap(root, game, (systemId, viaKeyboard) => {
       game.ui.selectedSystemId = systemId;
       render();
+      if (viaKeyboard) {
+        const panel = app.querySelector(".selected-system-panel");
+        const action = panel?.querySelector('[data-action]:not([disabled])');
+        (action || panel?.querySelector("h2"))?.focus();
+      }
     });
   });
 }

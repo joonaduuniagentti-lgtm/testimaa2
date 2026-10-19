@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { SCREEN_DEFS } from "../src/data.js";
+import { renderMapNode } from "../src/galaxy-map.js";
 import { renderApp } from "../src/view.js";
 import { createGame } from "../src/world.js";
 
@@ -38,4 +39,22 @@ test("save handling and system names are represented in the rendered controls", 
   game.ui.selectedSystemId = target.id;
   assert.match(renderApp(game), /data-map-root/);
   assert.match(renderApp(game), /Perusta siirtokunta/);
+});
+
+test("unknown systems are keyboard selectable without revealing their names", () => {
+  const game = createGame("keyboard-exploration-test");
+  const target = game.systems.find((system) => !system.discovered);
+  assert.ok(target);
+
+  const node = renderMapNode(game, target);
+  assert.match(node, /tabindex="0" role="button"/);
+  assert.match(node, new RegExp(`aria-label="Tuntematon järjestelmä, kohde ${target.number}"`));
+  assert.doesNotMatch(node, new RegExp(target.name));
+
+  game.ui.screen = "galaxy";
+  game.ui.selectedSystemId = target.id;
+  const html = renderApp(game);
+  assert.match(html, new RegExp(`Tuntematon järjestelmä · kohde ${target.number}`));
+  assert.match(html, /data-action="expedition"/);
+  assert.doesNotMatch(html, new RegExp(target.name));
 });

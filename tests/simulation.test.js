@@ -123,6 +123,23 @@ test("survey fleet follows its route, discovers the destination, and history is 
   assert.deepEqual(a.factions.map((faction) => faction.power), b.factions.map((faction) => faction.power));
 });
 
+test("the first twelve months produce a deterministic history", () => {
+  const run = () => {
+    const game = createGame("twelve-month-acceptance");
+    tick(game, 12);
+    return game;
+  };
+  const first = run();
+  const second = run();
+
+  assert.equal(first.turn, 12);
+  assert.equal(first.history.length, 13);
+  assert.deepEqual(first.history, second.history);
+  assert.deepEqual(first.log, second.log);
+  assert.deepEqual(first.player.resources, second.player.resources);
+  assert.deepEqual(first.factions, second.factions);
+});
+
 test("the rare signal resolves once and becomes a permanent relic", () => {
   const game = createGame("surprise-test");
   const relicSite = game.systems.find((system) => system.anomaly === "Kantaman muistijälki");

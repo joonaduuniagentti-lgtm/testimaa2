@@ -16,6 +16,17 @@ function systemRadius(system, selected) {
   return system.discovered ? 4.4 : 2.1;
 }
 
+export function renderMapNode(game, system, selectedId = game.ui.selectedSystemId) {
+  const selected = system.id === selectedId;
+  const color = factionColor(game, system.owner);
+  const radius = systemRadius(system, selected);
+  const label = system.discovered ? `<text x="${system.x + 12}" y="${system.y + 4}" class="map-label ${selected ? "is-selected" : ""}">${esc(system.name)}</text>` : "";
+  const accessibleName = system.discovered ? system.name : `Tuntematon järjestelmä, kohde ${system.number}`;
+  const ring = system.colony ? `<circle cx="${system.x}" cy="${system.y}" r="${radius + 4}" class="colony-ring" stroke="${color}"/>` : "";
+  const halo = selected ? `<circle cx="${system.x}" cy="${system.y}" r="18" class="map-halo"/>` : "";
+  return `<g class="map-node ${system.discovered ? "is-known" : "is-hidden"} ${selected ? "is-selected" : ""}" data-system="${system.id}" tabindex="0" role="button" aria-label="${esc(accessibleName)}">${halo}${ring}<circle cx="${system.x}" cy="${system.y}" r="${radius}" fill="${system.discovered ? color : "#68808a"}" class="map-star"/>${label}</g>`;
+}
+
 export function mountGalaxyMap(root, game, onSelect) {
   const systems = game.systems;
   const selectedId = game.ui.selectedSystemId;
@@ -32,15 +43,7 @@ export function mountGalaxyMap(root, game, onSelect) {
     const right = systems.find((system) => system.id === rightId);
     return `<line x1="${left.x}" y1="${left.y}" x2="${right.x}" y2="${right.y}" class="map-route ${left.owner === "player" && right.owner === "player" ? "route-owned" : ""}"/>`;
   }).join("");
-  const nodes = systems.map((system) => {
-    const selected = system.id === selectedId;
-    const color = factionColor(game, system.owner);
-    const radius = systemRadius(system, selected);
-    const label = system.discovered ? `<text x="${system.x + 12}" y="${system.y + 4}" class="map-label ${selected ? "is-selected" : ""}">${esc(system.name)}</text>` : "";
-    const ring = system.colony ? `<circle cx="${system.x}" cy="${system.y}" r="${radius + 4}" class="colony-ring" stroke="${color}"/>` : "";
-    const halo = selected ? `<circle cx="${system.x}" cy="${system.y}" r="18" class="map-halo"/>` : "";
-    return `<g class="map-node ${system.discovered ? "is-known" : "is-hidden"} ${selected ? "is-selected" : ""}" data-system="${system.id}" tabindex="${system.discovered ? "0" : "-1"}" role="button" aria-label="${esc(system.discovered ? system.name : "Tuntematon järjestelmä")}">${halo}${ring}<circle cx="${system.x}" cy="${system.y}" r="${radius}" fill="${system.discovered ? color : "#68808a"}" class="map-star"/>${label}</g>`;
-  }).join("");
+  const nodes = systems.map((system) => renderMapNode(game, system, selectedId)).join("");
   root.innerHTML = `<svg class="galaxy-svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" role="group" aria-label="Tähtikartta. Zoomaa vierittämällä ja siirrä vetämällä."><defs><radialGradient id="mapGlow"><stop offset="0" stop-color="#1c4750" stop-opacity=".55"/><stop offset="1" stop-color="#081518" stop-opacity="0"/></radialGradient><pattern id="mapGrid" width="88" height="88" patternUnits="userSpaceOnUse"><path d="M 88 0 L 0 0 0 88" fill="none" stroke="#8bb4b1" stroke-opacity=".055" stroke-width="1"/><circle cx="1" cy="1" r="1" fill="#b5d9ce" fill-opacity=".12"/></pattern></defs><rect width="${WIDTH}" height="${HEIGHT}" fill="#091619"/><rect width="${WIDTH}" height="${HEIGHT}" fill="url(#mapGlow)"/><rect width="${WIDTH}" height="${HEIGHT}" fill="url(#mapGrid)"/><g class="map-stars-bg">${Array.from({ length: 60 }, (_, index) => `<circle cx="${(index * 131 + 39) % WIDTH}" cy="${(index * 79 + 21) % HEIGHT}" r="${index % 9 === 0 ? 1.6 : 0.8}" fill="#d6e4d8" opacity="${index % 3 === 0 ? ".34" : ".16"}"/>`).join("")}</g><g class="map-content">${lines}${nodes}</g></svg>`;
   const svg = root.querySelector("svg");
   const content = root.querySelector(".map-content");
@@ -77,9 +80,9 @@ export function mountGalaxyMap(root, game, onSelect) {
   svg.addEventListener("pointerup", () => { drag = null; });
   svg.addEventListener("pointercancel", () => { drag = null; });
   root.querySelectorAll(".map-node").forEach((node) => {
-    node.addEventListener("click", () => onSelect(node.dataset.system));
+    node.addEventListener("click", () => onSelect(node.dataset.system, false));
     node.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(node.dataset.system); }
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(node.dataset.system, true); }
     });
   });
 }
