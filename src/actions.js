@@ -5,6 +5,20 @@ export function hasTech(game, techId) {
   return game.player.technologies.includes(techId);
 }
 
+export function fleetTravelMonths(game, fleet) {
+  if (!fleet?.path?.length) return 0;
+  const stride = fleet.role === "survey" && hasTech(game, "survey-lattices") ? 2 : 1;
+  return Math.ceil(fleet.path.length / stride);
+}
+
+export function expeditionCost(game, routeLength) {
+  const discount = hasTech(game, "folded-space") ? 1 : 0;
+  return {
+    fuel: Math.max(2, routeLength * (2 - discount)),
+    credits: 4 + routeLength * 2
+  };
+}
+
 export function researchStatus(game, tech) {
   if (hasTech(game, tech.id)) return "researched";
   if (tech.prereq.every((id) => hasTech(game, id))) return "available";
@@ -72,18 +86,16 @@ export function beginExpedition(game, systemId) {
   if (!fleet) return fail("Kaikki retkikunnat ovat jo matkalla.");
   const route = shortestRoute(game, fleet.systemId, systemId);
   if (!route || route.length === 0) return fail("Kohteeseen ei löydy tunnettua väylää.");
-  const discount = hasTech(game, "folded-space") ? 1 : 0;
-  const fuelCost = Math.max(2, route.length * (2 - discount));
-  const creditCost = 4 + route.length * 2;
-  const cost = { fuel: fuelCost, credits: creditCost };
+  const cost = expeditionCost(game, route.length);
   if (!canAfford(game, cost)) return fail("Retkikunta tarvitsee lisää polttoainetta tai krediittejä.");
 
   spend(game, cost);
   fleet.path = route.slice();
   fleet.destination = systemId;
   fleet.status = "matkalla";
-  addLog(game, "expedition", "Retkikunta lähti", "Pohjantähti suuntaa tuntemattomaan järjestelmään. Arvioitu matka: " + route.length + " kk.");
-  return succeed("Pohjantähti lähti tutkimusretkelle. Se saapuu " + route.length + " kuukauden kuluttua.");
+  const eta = fleetTravelMonths(game, fleet);
+  addLog(game, "expedition", "Retkikunta lähti", "Pohjantähti suuntaa tuntemattomaan järjestelmään. Arvioitu matka: " + eta + " kk.");
+  return succeed("Pohjantähti lähti tutkimusretkelle. Arvioitu saapuminen " + eta + " kk kuluttua.");
 }
 
 export function colonizeSystem(game, systemId) {
