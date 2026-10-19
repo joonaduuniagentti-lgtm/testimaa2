@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { BUILDINGS, EVENTS, TECHS } from "../src/data.js";
-import { beginExpedition, buildBuilding, eventChoiceAvailable, resolveEvent, shortestRoute, startResearch } from "../src/actions.js";
+import { beginExpedition, buildBuilding, eventChoiceAvailable, fleetTravelMonths, resolveEvent, shortestRoute, startResearch } from "../src/actions.js";
 import { advanceMonth, evaluateVictory } from "../src/simulation.js";
 import { createGame, generateGalaxy, getSystem, ownedSystems } from "../src/world.js";
 import { exportSave, parseSave, saveGame, loadGame, validateSave } from "../src/storage.js";
@@ -107,6 +107,23 @@ test("survey lattices let a research fleet cross two known route steps per month
   game.player.technologies.push("survey-lattices");
   advanceMonth(game);
   assert.equal(scout.path.length, Math.max(0, before - 2));
+});
+
+test("survey expedition estimates account for the two-step research speed", () => {
+  const game = createGame("survey-lattice-eta-test");
+  const scout = game.player.fleets.find((fleet) => fleet.role === "survey");
+  const target = game.systems.filter((system) => !system.discovered)
+    .map((system) => ({ system, route: shortestRoute(game, scout.systemId, system.id) }))
+    .find(({ route }) => route?.length >= 3);
+  assert.ok(target);
+
+  game.player.technologies.push("survey-lattices");
+  const result = beginExpedition(game, target.system.id);
+  const eta = Math.ceil(target.route.length / 2);
+  assert.equal(result.ok, true);
+  assert.match(result.message, new RegExp(`Arvioitu saapuminen ${eta} kk`));
+  assert.equal(fleetTravelMonths(game, scout), eta);
+  assert.match(game.log[0].text, new RegExp(`Arvioitu matka: ${eta} kk`));
 });
 
 test("survey fleet follows its route, discovers the destination, and history is deterministic", () => {
