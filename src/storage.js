@@ -1,4 +1,4 @@
-import { EVENTS, FACTIONS, SCREEN_DEFS, TECHS } from "./data.js";
+import { BUILDINGS, EVENTS, FACTIONS, SCREEN_DEFS, TECHS } from "./data.js";
 
 export const SAVE_KEY = "kantama.save.v1";
 const RESOURCE_KEYS = ["credits", "alloys", "food", "fuel", "influence", "science"];
@@ -38,14 +38,19 @@ export function validateSave(game) {
 
   const systemIds = new Set();
   for (const system of game.systems) {
-    if (!isObject(system) || typeof system.id !== "string" || typeof system.name !== "string" || typeof system.planetName !== "string" || !Array.isArray(system.neighbors)) {
+    if (!isObject(system) || typeof system.id !== "string" || typeof system.name !== "string" || typeof system.planetName !== "string" || typeof system.planetType !== "string" || !Array.isArray(system.neighbors) || !isObject(system.buildings)) {
       return { ok: false, reason: "Galaksin järjestelmätiedot ovat virheelliset." };
     }
+    const invalidBuilding = Object.entries(system.buildings).some(([buildingId, level]) => {
+      const building = BUILDINGS.find((candidate) => candidate.id === buildingId);
+      return !building || !Number.isInteger(level) || level < 0 || level > building.maxLevel;
+    });
+    if (invalidBuilding) return { ok: false, reason: "Järjestelmän rakennustiedot ovat virheelliset." };
     if (systemIds.has(system.id)) return { ok: false, reason: "Galaksissa on päällekkäisiä järjestelmätunnisteita." };
     if (!validNumber(system.x, 0, 1100) || !validNumber(system.y, 0, 760) || !validNumber(system.habitability, 0, 1) || !validNumber(system.mineral, 0, 1) || !validNumber(system.richness, 0, 1)) {
       return { ok: false, reason: "Järjestelmän ominaisarvot ovat virheelliset." };
     }
-    if (![null, "player", ...factionIds].includes(system.owner) || typeof system.discovered !== "boolean" || typeof system.colony !== "boolean") return { ok: false, reason: "Järjestelmän omistajuus tai kartoitustila on virheellinen." };
+    if (![null, "player", ...factionIds].includes(system.owner) || typeof system.discovered !== "boolean" || typeof system.colony !== "boolean" || Boolean(system.owner) !== system.colony) return { ok: false, reason: "Järjestelmän omistajuus tai kartoitustila on virheellinen." };
     systemIds.add(system.id);
   }
   for (const system of game.systems) {
@@ -57,6 +62,12 @@ export function validateSave(game) {
     if (system.colony && (!system.owner || !validNumber(system.population, 0, 22) || !validNumber(system.stability, 0, 100))) return { ok: false, reason: "Siirtokunnan väestö- tai vakausarvo on virheellinen." };
   }
   if (!systemIds.has(game.ui.selectedSystemId)) return { ok: false, reason: "Käyttöliittymän valitsemaa järjestelmää ei ole olemassa." };
+  if (game.ui.mapView !== undefined) {
+    const view = game.ui.mapView;
+    if (!isObject(view) || !validNumber(view.x, 0, 1100) || !validNumber(view.y, 0, 760) || !validNumber(view.width, 340, 1100) || !validNumber(view.height, 1, 760) || view.x + view.width > 1100 || view.y + view.height > 760) {
+      return { ok: false, reason: "Tähtikartan näkymäasetukset ovat virheelliset." };
+    }
+  }
 
   const techIds = new Set(TECHS.map((tech) => tech.id));
   if (new Set(game.player.technologies).size !== game.player.technologies.length || game.player.technologies.some((id) => !techIds.has(id))) return { ok: false, reason: "Tutkittujen teknologioiden tunnisteet ovat virheelliset." };

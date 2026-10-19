@@ -23,13 +23,14 @@ function render() {
   app.querySelectorAll("[data-map-root]").forEach((root) => {
     mountGalaxyMap(root, game, (systemId, viaKeyboard) => {
       game.ui.selectedSystemId = systemId;
+      persist();
       render();
       if (viaKeyboard) {
         const panel = app.querySelector(".selected-system-panel");
         const action = panel?.querySelector('[data-action]:not([disabled])');
         (action || panel?.querySelector("h2"))?.focus();
       }
-    });
+    }, persist);
   });
 }
 

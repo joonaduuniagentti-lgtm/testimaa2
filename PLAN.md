@@ -12,18 +12,18 @@ Tavoite ei ole yksi irrallinen näkymä vaan pelattava strategiasilmukka, jonka 
 2. Valitse strateginen teko: perusta siirtokunta, rakenna, tutki, lähetä retkikunta, suuntaa laivasto, säädä verotusta tai neuvottele.
 3. Vie aikaa yksi kuukausi kerrallaan tai neljännes kerrallaan.
 4. Ratkaise tapahtumien valinnat ja reagoi simulaation seurauksiin.
-5. Rakenna kohti tieteellistä, diplomaattista tai alueellista voittoa.
+5. Rakenna kohti tieteellistä, diplomaattista tai alueellista voittoa; puolusta Vesperin painostamia rajasiirtokuntia sijoitetuilla laivueilla.
 
 ## Sisältöraja
 
 - 42 proseduraalisesti nimettyä tähtijärjestelmää, sidottu tähtiväyläverkko ja sumukartta.
 - Pelaajan valtio sekä neljä eri tavoin käyttäytyvää tekoälyvaltaa.
-- Kuusi resurssia, siirtokuntien väestö ja vakaus, kuusi rakennustyyppiä ja tuotantovaikutukset.
+- Kuusi resurssia, siirtokuntien väestö ja vakaus sekä kuusi rakennustyyppiä, joista näytetään seuraavan tason kustannus ja lisätuotanto.
 - Neljä tutkimushaaraa ja 16 avattavaa teknologiaa.
 - Tutkimusretket, laivastojen reitit ja kuukausittainen liike.
 - Harvinainen, käsin kirjoitettu tähtilöytö, joka avaa oman tarinan ja pysyvän muiston.
 - Suhteet, diplomaattiset lähetystöt, kauppasopimukset ja tutkimusliitot.
-- Tapahtumakortit valintoineen, tapahtumaloki, resurssihistoria ja kolme voittoehtoa.
+- Kymmenen tapahtumakorttia valintoineen, mahdottoman maksutilanteen kriisipäätös, tapahtumaloki, resurssihistoria ja kolme mitattavaa voittoehtoa.
 - Paikallinen automaattitallennus, JSON-varmuuskopio ja turvallinen tuontivalidointi.
 - Responsiivinen komentokeskus, hiirellä/kosketuksella panoroitava ja zoomattava tähtikartta sekä graafit.
 
@@ -48,7 +48,7 @@ Toteutus on riippumaton ulkoisista kirjastoista ja API-palveluista. Samaa puhdas
 2. **Luo galaksi.** Generoi 42 ainutkertaista maailmaa, reitit, löydettävyys, resurssipotentiaali ja viisi valtaa.
 3. **Tee komentotalous.** Toteuta tuotantoketjut, resurssikustannukset, väestö, vakaus, veropolitiikka ja tutkimuksen eteneminen.
 4. **Lisää liike ja valtapeli.** Toteuta reitinhaku, tutkimusretket, laivastojen liike, tekoälyvaltioiden päätökset ja diplomatia.
-5. **Rakenna tapahtumajärjestelmä ja voitot.** Tapahtumissa on keskenään erilaiset valinnat ja laskettavat seuraukset; voittopolut mitataan simulaatiosta.
+5. **Rakenna tapahtumajärjestelmä ja voitot.** Kymmenen tapahtumaa tarjoavat erilaisia valintoja; kriisipäätös estää tyhjään varastoon lukkiutumisen. Voittopolut vaativat mitattavia, samanaikaisia ehtoja.
 6. **Tee komentokeskus.** Rakenna kartta, tilannekuva, siirtokunnat, teknologiat, diplomatia, laivastot ja kronikka omiksi näkymikseen.
 7. **Tee tallennuksesta osa peliä.** Palauta sama siemen, tapahtumaloki, reitit ja edistyminen; anna käyttäjän varmuuskopioida pelitila.
 8. **Testaa järjestelmärajat ja julkaise.** Aja simulaatiotestejä, tarkista reitit, resurssit, tuonti, saavutettavuuden peruspolku ja repoon päätyvät tiedostot.
@@ -60,8 +60,10 @@ Toteutus on riippumaton ulkoisista kirjastoista ja API-palveluista. Samaa puhdas
 - Komento ei kuluta resursseja, jos se hylätään; hyväksytty teko veloitetaan täsmälleen kerran.
 - Retkikunta etenee reittinsä mukaisesti ja paljastaa kohdejärjestelmän saapuessaan.
 - Kuukausi tuottaa tuloja, maksaa väestön ruoan, kasvattaa tutkimusta, vanhentaa sopimuksia ja tallentaa historiapisteen.
-- Tapahtumavalinta muuttaa pelitilaa, ja voittoehdot syntyvät vain niitä vastaavista pelitilan arvoista.
+- Tapahtumavalinta muuttaa pelitilaa, lukkiutunut maksutilanne voidaan aina ratkaista, ja voittoehdot syntyvät vain niitä vastaavista pelitilan arvoista.
 - Vienti voidaan tuoda takaisin; väärä tai rikkinäinen JSON ei korvaa käynnissä olevaa tallennusta.
+- Rakennusnäkymä näyttää seuraavan tason kustannuksen ja lisätuotannon; hintojen teknologiamuutokset näkyvät myös kartalla ja laivastoissa.
+- Kartan zoomaus ja pan pysyvät samoina näkymää uudelleen piirrettäessä.
 - npm test toimii ilman verkkoa tai kolmannen osapuolen paketteja.
 - Käyttöliittymän pääpolku toimii näppäimistöllä ja kapealla näytöllä.
 
@@ -69,5 +71,5 @@ Toteutus on riippumaton ulkoisista kirjastoista ja API-palveluista. Samaa puhdas
 
 - Tämä on yksinpelattava simulaatio, ei verkkopeli. Tallennus ja tekoäly jäävät käyttäjän selaimeen.
 - 42 järjestelmää ja vuoropohjainen eteneminen pitävät generoinnin ymmärrettävänä; peli ei yritä olla rajaton universumi.
-- Taistelut mallinnetaan nykyversiossa resurssien, reittien ja tapahtumien kautta. Erillinen taktinen taistelunäkymä on jatkokehityskohde.
+- Puolustus on strateginen rajapaineen ja varuskunnan voimavertailu, ei taktinen taisteluruutu. Alueiden valtaaminen tai sotilaallinen kampanja jää jatkokehitykseen.
 - Canvas piirtää kartan itse, jotta projekti säilyy riippuvuudettomana ja julkaistavana staattisena sivuna.

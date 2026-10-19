@@ -55,7 +55,8 @@ function calculateNet(game) {
 }
 
 function applyEconomy(game) {
-  const net = calculateNet(game);
+  const requestedNet = calculateNet(game);
+  const net = { ...requestedNet };
   const previousFood = game.player.resources.food;
   RESOURCE_KEYS.forEach((key) => {
     const before = game.player.resources[key] || 0;
@@ -64,7 +65,7 @@ function applyEconomy(game) {
     net[key] = game.player.resources[key] - before;
   });
 
-  const shortage = net.food < 0 && game.player.resources.food === 0;
+  const shortage = requestedNet.food < 0 && game.player.resources.food === 0;
   const policy = POLICIES.find((item) => item.id === game.player.policy) || POLICIES[1];
   ownedSystems(game).forEach((system) => {
     const habitat = system.buildings.habitat || 0;
@@ -188,6 +189,63 @@ function simulateFactions(game) {
   game.factions.forEach((faction) => simulateFactionExpansion(game, faction));
 }
 
+function stationedDefense(game, systemId) {
+  return game.player.fleets
+    .filter((fleet) => fleet.role === "defense" && fleet.systemId === systemId && fleet.path.length === 0)
+    .reduce((total, fleet) => total + fleet.strength, 0);
+}
+
+export function borderPressureReport(game) {
+  const aggressor = game.factions.find((faction) => faction.style === "military");
+  if (!aggressor) return null;
+  const relation = game.player.relations[aggressor.id] ?? 0;
+  const frontier = ownedSystems(game)
+    .filter((system) => system.neighbors.some((neighborId) => getSystem(game, neighborId)?.owner === aggressor.id))
+    .map((system) => ({
+      id: system.id,
+      name: system.name,
+      number: system.number,
+      stability: system.stability,
+      fleetStrength: stationedDefense(game, system.id),
+      defense: stationedDefense(game, system.id) + Math.floor(system.stability / 25)
+    }))
+    .sort((left, right) => left.defense - right.defense || left.stability - right.stability || left.number - right.number);
+  const baseThreat = 8 + Math.floor(aggressor.power / 12);
+  return {
+    aggressorId: aggressor.id,
+    aggressorName: aggressor.name,
+    relation,
+    active: relation < 25 && frontier.length > 0,
+    monthsUntilCheck: 12 - (game.turn % 12),
+    threatMin: baseThreat,
+    threatMax: baseThreat + 3,
+    frontier
+  };
+}
+
+function simulateBorderPressure(game) {
+  if (game.turn % 12 !== 0) return;
+  const report = borderPressureReport(game);
+  if (!report?.active) return;
+
+  const aggressor = game.factions.find((faction) => faction.id === report.aggressorId);
+  const target = getSystem(game, report.frontier[0].id);
+  const threat = report.threatMin + randomInt(game, 0, 3);
+  const defense = report.frontier[0].defense;
+  if (defense >= threat) {
+    target.stability = clamp(target.stability + 2, 0, 100);
+    game.player.globalStability = clamp(game.player.globalStability + 1, 0, 100);
+    game.player.relations[aggressor.id] = clamp(game.player.relations[aggressor.id] + 2, -100, 100);
+    pushLog(game, "defense", "Rajapuolustus torjui painostuksen", target.name + " kesti " + aggressor.short + "-valtion rajakokeen. Puolustusvoima " + defense + " ylitti uhan " + threat + ".");
+  } else {
+    const stabilityLoss = Math.min(12, 4 + threat - defense);
+    target.stability = clamp(target.stability - stabilityLoss, 0, 100);
+    game.player.globalStability = clamp(game.player.globalStability - Math.ceil(stabilityLoss / 2), 0, 100);
+    game.player.relations[aggressor.id] = clamp(game.player.relations[aggressor.id] - 2, -100, 100);
+    pushLog(game, "defense", "Rajalla tapahtui kahakka", aggressor.short + " painosti järjestelmää " + target.name + ". Puolustusvoima " + defense + " jäi uhan " + threat + " alle; vakaus −" + stabilityLoss + ".");
+  }
+}
+
 function snapshot(game) {
   return {
     turn: game.turn,
@@ -204,13 +262,18 @@ export function evaluateVictory(game) {
   if (game.victory) return game.victory;
   const colonies = ownedSystems(game).length;
   const activeTreaties = game.player.treaties.filter((treaty) => treaty.remaining > 0).length;
+  const averageRelation = Object.values(game.player.relations).reduce((sum, relation) => sum + relation, 0) / game.factions.length;
+  const averageStability = colonies ? ownedSystems(game).reduce((sum, system) => sum + system.stability, 0) / colonies : 0;
+  const researched = new Set(game.player.technologies);
+  const advancedTechnologyCount = TECHS.filter((tech) => tech.tier >= 3 && researched.has(tech.id)).length;
+  const treatyTypes = new Set(game.player.treaties.filter((treaty) => treaty.remaining > 0).map((treaty) => treaty.type));
   let victory = null;
-  if (game.player.technologies.length >= 8) {
-    victory = { id: "knowledge", title: "Tieteen kynnys ylitetty", detail: "Kahdeksan teknologiaa avasi sivilisaatiolle uuden aikakauden." };
-  } else if (activeTreaties >= 3) {
-    victory = { id: "accord", title: "Yhteinen tähtirintama", detail: "Kolme valtiota valitsi sopimuksen kilpailun sijaan." };
-  } else if (colonies >= 8) {
-    victory = { id: "frontier", title: "Kahdeksan kotia", detail: "Uusi tähtirintama yhdistää kahdeksan asutettua maailmaa." };
+  if (game.player.technologies.length >= 10 && advancedTechnologyCount >= 2) {
+    victory = { id: "knowledge", title: "Tieteen kynnys ylitetty", detail: "Kymmenen teknologiaa ja kaksi edistynyttä läpimurtoa avasivat sivilisaatiolle uuden aikakauden." };
+  } else if (activeTreaties >= 3 && treatyTypes.size >= 2 && averageRelation >= 30) {
+    victory = { id: "accord", title: "Yhteinen tähtirintama", detail: "Kolme sopimusta, molemmat yhteistyön muodot ja luottamus valtioiden välillä loivat pysyvän tähtiliiton." };
+  } else if (colonies >= 8 && averageStability >= 70) {
+    victory = { id: "frontier", title: "Kahdeksan kotia", detail: "Kahdeksan vakaata siirtokuntaa muodostivat uuden tähtirintaman." };
   }
   if (victory) {
     game.victory = { ...victory, turn: game.turn, year: game.year, month: game.month };
@@ -235,6 +298,7 @@ export function advanceMonth(game) {
   moveFleets(game);
   advanceTreaties(game);
   simulateFactions(game);
+  simulateBorderPressure(game);
   game.history.push(snapshot(game));
   if (game.history.length > 120) game.history.shift();
 

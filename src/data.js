@@ -99,6 +99,22 @@ export const EVENTS = [
   { id: "quiet-strike", title: "Hiljainen lakko", category: "SIIRTOKUNTA", text: "Etäisen siirtokunnan työntekijät kieltäytyvät käynnistämästä uusia louhijoita. Heidän pyyntönsä on yksinkertainen: lepoa ja tilaa.", choices: [
     { id: "rest", title: "Myönnetään tauko", detail: "Krediitit −12, vakaus +8", effects: { resources: { credits: -12 }, stability: 8 } },
     { id: "bonus", title: "Maksetaan kertakorvaus", detail: "Krediitit −26, vakaus +4", effects: { resources: { credits: -26 }, stability: 4 } }
+  ] },
+  { id: "refugee-flotilla", title: "Hätäviesti Hilasta", category: "SIIRTOKUNTA", text: "Rajaseudun evakuointilaivat pyytävät lupaa telakoitua. Mukana on viljelijöitä, insinöörejä ja kokonainen koululuokka.", choices: [
+    { id: "welcome-refugees", title: "Avataan heille uusi koti", detail: "Ravinto −12, uusi asutusalus ja vakaus +3", effects: { resources: { food: -12 }, colonization: 1, stability: 3 } },
+    { id: "offer-relief", title: "Lähetetään avustuskuorma", detail: "Vaikutusvalta +8, suhteet +3", effects: { resources: { influence: 8 }, relations: 3 } }
+  ] },
+  { id: "relay-fracture", title: "Katkennut väyläviesti", category: "VAROITUS", text: "Sektorin viestirele on alkanut toistaa vanhoja käskyjä. Sen takana kulkeva rahti odottaa varmistusta.", choices: [
+    { id: "repair-relay", title: "Korjataan rele", detail: "Krediitit −22, kaikki suhteet +4", effects: { resources: { credits: -22 }, relations: 4 } },
+    { id: "decode-relay", title: "Puretaan häiriö tutkimusasemalla", detail: "Tutkimus +22, polttoaine −6", effects: { resources: { science: 22, fuel: -6 } } }
+  ] },
+  { id: "archive-seed", title: "Arkiston siemenkammio", category: "LÖYTÖ", text: "Hylätyn luotaimen sisällä on siemenholvi ja katkelmallinen tähtikartta. Holvin merkinnät sopivat usean sivilisaation kalenteriin.", choices: [
+    { id: "catalogue-seeds", title: "Luetteloidaan arkisto yhdessä", detail: "Tutkimus +20, vaikutusvalta +5, suhteet +3", effects: { resources: { science: 20, influence: 5 }, relations: 3 } },
+    { id: "secure-seeds", title: "Siirretään holvi kotimaailmaan", detail: "Ravinto +18, vakaus +4", effects: { resources: { food: 18 }, stability: 4 } }
+  ] },
+  { id: "market-surge", title: "Satamien ruuhkahuippu", category: "TALOUS", text: "Uusi kauppasaattue tuo markkinoille ennätysmäärän tavaraa. Satamien kapasiteetti ei riitä kaikkien lastien käsittelyyn.", choices: [
+    { id: "expand-market", title: "Vuokrataan lisäkapasiteettia", detail: "Krediitit −18, vaikutusvalta +10", effects: { resources: { credits: -18, influence: 10 } } },
+    { id: "ration-docks", title: "Asetetaan rahti tärkeysjärjestykseen", detail: "Seokset +14, vakaus −2", effects: { resources: { alloys: 14 }, stability: -2 } }
   ] }
 ];
 

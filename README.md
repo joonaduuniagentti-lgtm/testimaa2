@@ -16,19 +16,21 @@ Vaihtoehtoisesti julkaise repoa staattisena GitHub Pages -sivuna.
 
 - **Komentosilta:** talous, strategiset tavoitteet, kartta ja päivän tärkeät tapahtumat.
 - **Galaksi:** 42 järjestelmän interaktiivinen kartta, järjestelmätiedot, tutkimusretket ja asuttaminen.
-- **Siirtokunnat:** väestö, vakaus, rakennukset ja planeettakohtainen tuotanto.
+- **Siirtokunnat:** väestö, vakaus, rakennusten seuraavan tason kustannukset ja lisätuotanto.
 - **Tutkimus:** neljän haaran teknologiapuu ja käynnissä oleva hanke.
 - **Diplomatia:** neljä tekoälyvaltaa, suhteet, lähetystöt ja sopimukset.
-- **Laivastot:** reitit, laivueet, niiden sijainnit sekä uusien alusten rakentaminen.
+- **Laivastot:** reitit, laivueet, niiden sijainnit, rajojen puolustusarviot sekä uusien alusten rakentaminen.
 - **Kronikka:** resurssikäyrä, historia ja viimeisimmät tapahtumat.
 
 Kartoitettavaksi jää myös yksi harvinainen löytö. Se kannattaa etsiä itse.
 
 ## Strategian peruspolku
 
-Jokainen vuoro on yksi kuukausi. Siirtokunnat tuottavat resursseja, väestö kuluttaa ruokaa ja laboratorio kasvattaa tutkimusta. Tekoälyvaltiot laajentuvat ja sopimukset vanhenevat. Vuoroja voi siirtää yksitellen tai neljännesvuosittain. Tapahtumat pysäyttävät kellon, kunnes niiden valinta on ratkaistu.
+Jokainen vuoro on yksi kuukausi. Siirtokunnat tuottavat resursseja, väestö kuluttaa ruokaa ja laboratorio kasvattaa tutkimusta. Tekoälyvaltiot laajentuvat ja sopimukset vanhenevat. Vuoroja voi siirtää yksitellen tai neljännesvuosittain. Tapahtumat pysäyttävät kellon valinnan ajaksi; jos varastossa ei ole varaa yhteenkään maksulliseen vaihtoehtoon, kriisipäätös päästää pelin jatkumaan vakaustappiolla.
 
-Voittoon on kolme tietä: tieteellinen läpimurto, usean valtion rauhanliitto tai laaja tähtirintama. Tavoitteet näkyvät komentosillalla.
+Puolustuslaivueet vaikuttavat, kun ne ovat paikallaan omassa Vesperin rajamaailmassa. Joka 12. kuukauden rajatarkastuksessa laivueiden yhteisvoimaa ja siirtokunnan vakautta verrataan uhkaan. Laivastonäkymä näyttää rajamaailmat, puolustusarvot ja seuraavan tarkistuksen.
+
+Voittoon on kolme tietä: 10 teknologiaa, joista vähintään kaksi on tasolta III ylöspäin; kolme samanaikaisesti voimassa olevaa, molempia tyyppejä edustavaa sopimusta ja vähintään +30 keskimääräiset suhteet; tai kahdeksan siirtokuntaa vähintään 70 prosentin keskivakaudella. Tavoitteiden eteneminen näkyy komentosillalla.
 
 ## Tietosuoja ja tallennus
 

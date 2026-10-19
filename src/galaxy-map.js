@@ -27,11 +27,21 @@ export function renderMapNode(game, system, selectedId = game.ui.selectedSystemI
   return `<g class="map-node ${system.discovered ? "is-known" : "is-hidden"} ${selected ? "is-selected" : ""}" data-system="${system.id}" tabindex="0" role="button" aria-label="${esc(accessibleName)}">${halo}${ring}<circle cx="${system.x}" cy="${system.y}" r="${radius}" fill="${system.discovered ? color : "#68808a"}" class="map-star"/>${label}</g>`;
 }
 
-export function mountGalaxyMap(root, game, onSelect) {
+export function mountGalaxyMap(root, game, onSelect, onViewChange = null) {
   const systems = game.systems;
   const selectedId = game.ui.selectedSystemId;
-  const view = { x: 0, y: 0, width: WIDTH, height: HEIGHT };
+  const storedView = game.ui.mapView;
+  const view = storedView && Number.isFinite(storedView.width) && Number.isFinite(storedView.height)
+    ? { ...storedView }
+    : { x: 0, y: 0, width: WIDTH, height: HEIGHT };
   let drag = null;
+  let viewSaveTimer = null;
+  const persistView = () => {
+    game.ui.mapView = { ...view };
+    if (!onViewChange) return;
+    globalThis.clearTimeout(viewSaveTimer);
+    viewSaveTimer = globalThis.setTimeout(onViewChange, 250);
+  };
   const knownIds = new Set(systems.filter((system) => system.discovered).map((system) => system.id));
   const edgeSet = new Set();
   systems.forEach((system) => system.neighbors.forEach((neighbor) => {
@@ -48,6 +58,7 @@ export function mountGalaxyMap(root, game, onSelect) {
   const svg = root.querySelector("svg");
   const content = root.querySelector(".map-content");
   const applyView = () => content.setAttribute("transform", `translate(${-view.x * WIDTH / view.width} ${-view.y * HEIGHT / view.height}) scale(${WIDTH / view.width} ${HEIGHT / view.height})`);
+  applyView();
   const getPoint = (event) => {
     const rect = svg.getBoundingClientRect();
     return { x: view.x + ((event.clientX - rect.left) / rect.width) * view.width, y: view.y + ((event.clientY - rect.top) / rect.height) * view.height };
@@ -64,6 +75,7 @@ export function mountGalaxyMap(root, game, onSelect) {
     view.width = width;
     view.height = height;
     applyView();
+    persistView();
   }, { passive: false });
   svg.addEventListener("pointerdown", (event) => {
     if (event.target.closest(".map-node")) return;
@@ -76,8 +88,9 @@ export function mountGalaxyMap(root, game, onSelect) {
     view.x = Math.max(0, Math.min(WIDTH - view.width, drag.viewX - (event.clientX - drag.x) / rect.width * view.width));
     view.y = Math.max(0, Math.min(HEIGHT - view.height, drag.viewY - (event.clientY - drag.y) / rect.height * view.height));
     applyView();
+    persistView();
   });
-  svg.addEventListener("pointerup", () => { drag = null; });
+  svg.addEventListener("pointerup", () => { drag = null; persistView(); });
   svg.addEventListener("pointercancel", () => { drag = null; });
   root.querySelectorAll(".map-node").forEach((node) => {
     node.addEventListener("click", () => onSelect(node.dataset.system, false));

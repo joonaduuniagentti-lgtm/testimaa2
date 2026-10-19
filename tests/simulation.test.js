@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { BUILDINGS, EVENTS, TECHS } from "../src/data.js";
-import { beginExpedition, buildBuilding, eventChoiceAvailable, fleetTravelMonths, resolveEvent, shortestRoute, startResearch } from "../src/actions.js";
-import { advanceMonth, evaluateVictory } from "../src/simulation.js";
+import { beginExpedition, buildBuilding, eventChoiceAvailable, fleetTravelMonths, resolveEvent, shortestRoute, startResearch, EMERGENCY_EVENT_CHOICE_ID } from "../src/actions.js";
+import { advanceMonth, borderPressureReport, evaluateVictory } from "../src/simulation.js";
 import { createGame, generateGalaxy, getSystem, ownedSystems } from "../src/world.js";
 import { exportSave, parseSave, saveGame, loadGame, validateSave } from "../src/storage.js";
 
@@ -10,8 +10,7 @@ function resolvePendingEvent(game) {
   if (!game.event) return;
   const event = EVENTS.find((item) => item.id === game.event.id);
   const choice = event.choices.find((item) => eventChoiceAvailable(game, item));
-  assert.ok(choice, "at least one event choice should be affordable");
-  assert.equal(resolveEvent(game, choice.id).ok, true);
+  assert.equal(resolveEvent(game, choice?.id || EMERGENCY_EVENT_CHOICE_ID).ok, true);
 }
 
 function tick(game, count) {
@@ -157,6 +156,72 @@ test("the first twelve months produce a deterministic history", () => {
   assert.deepEqual(first.factions, second.factions);
 });
 
+test("a food shortage at an empty storehouse lowers stability", () => {
+  const game = createGame("empty-food-test");
+  const home = ownedSystems(game)[0];
+  game.player.resources.food = 0;
+  home.population = 22;
+  home.buildings.farm = 0;
+  const colonyStability = home.stability;
+  const nationalStability = game.player.globalStability;
+
+  advanceMonth(game);
+
+  assert.equal(game.player.resources.food, 0);
+  assert.ok(home.stability < colonyStability);
+  assert.ok(game.player.globalStability < nationalStability);
+});
+
+test("an unaffordable event can be closed with a costly crisis decision", () => {
+  const game = createGame("event-deadlock-test");
+  game.event = { id: "quiet-strike", turn: game.turn };
+  game.player.resources.credits = 10;
+  const home = ownedSystems(game)[0];
+  const before = home.stability;
+
+  assert.equal(EVENTS.find((event) => event.id === game.event.id).choices.some((choice) => eventChoiceAvailable(game, choice)), false);
+  assert.equal(advanceMonth(game).reason, "pending-event");
+  const result = resolveEvent(game, EMERGENCY_EVENT_CHOICE_ID);
+
+  assert.equal(result.ok, true);
+  assert.equal(game.event, null);
+  assert.ok(home.stability < before);
+  assert.equal(advanceMonth(game).advanced, true);
+});
+
+test("frontier defense fleets can repel Vesper pressure", () => {
+  const makeFrontier = (strength) => {
+    const game = createGame("border-pressure-test");
+    const home = ownedSystems(game)[0];
+    const neighbor = getSystem(game, home.neighbors[0]);
+    const vesper = game.factions.find((faction) => faction.id === "vesper");
+    if (neighbor.owner && neighbor.owner !== vesper.id) game.factionWorlds[neighbor.owner] = game.factionWorlds[neighbor.owner].filter((id) => id !== neighbor.id);
+    neighbor.owner = vesper.id;
+    neighbor.colony = true;
+    neighbor.buildings = { farm: 1 };
+    if (!game.factionWorlds[vesper.id].includes(neighbor.id)) game.factionWorlds[vesper.id].push(neighbor.id);
+    game.player.relations.vesper = -40;
+    game.player.fleets.find((fleet) => fleet.role === "defense").strength = strength;
+    game.turn = 11;
+    game.month = 12;
+    game.nextEventTurn = 100;
+    return game;
+  };
+  const defended = makeFrontier(100);
+  const exposed = makeFrontier(0);
+  const report = borderPressureReport(defended);
+  assert.equal(report.active, true);
+  assert.equal(report.monthsUntilCheck, 1);
+  assert.equal(report.frontier[0].fleetStrength, 100);
+
+  advanceMonth(defended);
+  advanceMonth(exposed);
+
+  assert.ok(defended.log.some((entry) => entry.title === "Rajapuolustus torjui painostuksen"));
+  assert.ok(exposed.log.some((entry) => entry.title === "Rajalla tapahtui kahakka"));
+  assert.ok(ownedSystems(exposed)[0].stability < ownedSystems(defended)[0].stability);
+});
+
 test("the rare signal resolves once and becomes a permanent relic", () => {
   const game = createGame("surprise-test");
   const relicSite = game.systems.find((system) => system.anomaly === "Kantaman muistijälki");
@@ -190,22 +255,37 @@ test("save export, import, and browser storage round-trip the complete state", (
   const brokenRoute = structuredClone(game);
   brokenRoute.systems[0].neighbors.pop();
   assert.equal(validateSave(brokenRoute).ok, false);
+  const missingBuildings = structuredClone(game);
+  delete missingBuildings.systems[0].buildings;
+  assert.equal(validateSave(missingBuildings).ok, false);
+  const invalidBuildingLevel = structuredClone(game);
+  invalidBuildingLevel.systems[0].buildings.farm = 999;
+  assert.equal(validateSave(invalidBuildingLevel).ok, false);
 });
 
 test("each victory route is derived from actual state", () => {
   const knowledge = createGame("victory-knowledge");
-  knowledge.player.technologies = TECHS.slice(0, 8).map((tech) => tech.id);
+  knowledge.player.technologies = TECHS.slice(0, 10).map((tech) => tech.id);
   assert.equal(evaluateVictory(knowledge).id, "knowledge");
+  const earlyKnowledge = createGame("early-victory-knowledge");
+  earlyKnowledge.player.technologies = TECHS.slice(0, 8).map((tech) => tech.id);
+  assert.equal(evaluateVictory(earlyKnowledge), null);
 
   const accord = createGame("victory-accord");
-  accord.player.treaties = accord.factions.slice(0, 3).map((faction) => ({ factionId: faction.id, type: "trade", remaining: 10 }));
+  accord.player.treaties = accord.factions.slice(0, 3).map((faction, index) => ({ factionId: faction.id, type: index === 0 ? "research" : "trade", remaining: 10 }));
+  Object.keys(accord.player.relations).forEach((id) => { accord.player.relations[id] = 40; });
   assert.equal(evaluateVictory(accord).id, "accord");
+  const weakAccord = createGame("weak-victory-accord");
+  weakAccord.player.treaties = accord.player.treaties;
+  weakAccord.player.relations.helion = 0;
+  assert.equal(evaluateVictory(weakAccord), null);
 
   const frontier = createGame("victory-frontier");
   for (const system of frontier.systems.filter((item) => !item.owner).slice(0, 7)) {
     system.owner = "player";
     system.colony = true;
     system.population = 1;
+    system.stability = 80;
   }
   assert.equal(ownedSystems(frontier).length, 8);
   assert.equal(evaluateVictory(frontier).id, "frontier");

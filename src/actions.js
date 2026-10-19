@@ -19,6 +19,37 @@ export function expeditionCost(game, routeLength) {
   };
 }
 
+export function colonizationCost(game) {
+  const discount = hasTech(game, "colony-charters") ? 10 : 0;
+  return {
+    credits: Math.max(25, 48 - discount - game.player.colonizationBonus * 4),
+    alloys: Math.max(24, 38 - discount),
+    fuel: 8
+  };
+}
+
+export function buildingUpgrade(game, system, buildingId) {
+  const building = BUILDINGS.find((item) => item.id === buildingId);
+  if (!building || !system) return null;
+  const level = Number(system.buildings?.[buildingId]) || 0;
+  const multiplier = 1 + level * 0.7;
+  const cost = Object.fromEntries(Object.entries(building.cost).map(([key, amount]) => [key, Math.ceil(amount * multiplier)]));
+  const outputMultiplier = buildingId === "foundry" && hasTech(game, "orbital-foundries") ? 1.35 : 1;
+  const output = Object.fromEntries(Object.entries(building.output).map(([key, amount]) => [key, amount * outputMultiplier]));
+  // Closed ecologies add a colony-wide bonus when the first farm appears;
+  // subsequent farm levels only add their own base output.
+  if (buildingId === "farm" && level === 0 && hasTech(game, "closed-ecologies")) output.food += 3;
+  return { level, cost, output, populationGrowth: buildingId === "habitat" ? 0.16 : 0 };
+}
+
+export function defenseFleetCost(game) {
+  return { credits: 54, alloys: Math.max(18, 36 - (hasTech(game, "modular-hulls") ? 6 : 0)) };
+}
+
+export function colonyShipCost(game) {
+  return hasTech(game, "modular-hulls") ? { credits: 42, alloys: 24 } : { credits: 52, alloys: 32 };
+}
+
 export function researchStatus(game, tech) {
   if (hasTech(game, tech.id)) return "researched";
   if (tech.prereq.every((id) => hasTech(game, id))) return "available";
@@ -55,7 +86,7 @@ export function shortestRoute(game, startId, targetId) {
   return null;
 }
 
-function canAfford(game, cost) {
+export function canAffordResources(game, cost) {
   return Object.entries(cost).every(([key, amount]) => game.player.resources[key] >= amount);
 }
 
@@ -87,7 +118,7 @@ export function beginExpedition(game, systemId) {
   const route = shortestRoute(game, fleet.systemId, systemId);
   if (!route || route.length === 0) return fail("Kohteeseen ei löydy tunnettua väylää.");
   const cost = expeditionCost(game, route.length);
-  if (!canAfford(game, cost)) return fail("Retkikunta tarvitsee lisää polttoainetta tai krediittejä.");
+  if (!canAffordResources(game, cost)) return fail("Retkikunta tarvitsee lisää polttoainetta tai krediittejä.");
 
   spend(game, cost);
   fleet.path = route.slice();
@@ -106,9 +137,8 @@ export function colonizeSystem(game, systemId) {
   const habitabilityBonus = hasTech(game, "biosphere-worlds") ? 0.16 : 0;
   if (system.habitability + habitabilityBonus < 0.4) return fail("Maailma ei vielä kestä pysyvää asutusta.");
   if (game.player.colonyShips <= 0) return fail("Uusia siirtokuntalaivoja ei ole jäljellä.");
-  const discount = hasTech(game, "colony-charters") ? 10 : 0;
-  const cost = { credits: Math.max(25, 48 - discount - game.player.colonizationBonus * 4), alloys: Math.max(24, 38 - discount), fuel: 8 };
-  if (!canAfford(game, cost)) return fail("Siirtokunnan perustaminen vaatii lisää krediittejä, seoksia tai polttoainetta.");
+  const cost = colonizationCost(game);
+  if (!canAffordResources(game, cost)) return fail("Siirtokunnan perustaminen vaatii lisää krediittejä, seoksia tai polttoainetta.");
 
   spend(game, cost);
   game.player.colonyShips -= 1;
@@ -128,13 +158,12 @@ export function buildBuilding(game, systemId, buildingId) {
   const building = BUILDINGS.find((item) => item.id === buildingId);
   if (!system || !building) return fail("Rakennusohjetta ei löydy.");
   if (system.owner !== "player" || !system.colony) return fail("Rakentamiseen tarvitaan oma siirtokunta.");
-  const level = Number(system.buildings[buildingId]) || 0;
+  const upgrade = buildingUpgrade(game, system, buildingId);
+  const level = upgrade.level;
   if (level >= building.maxLevel) return fail("Rakennus on jo enimmäistasollaan.");
-  const multiplier = 1 + level * 0.7;
-  const cost = Object.fromEntries(Object.entries(building.cost).map(([key, amount]) => [key, Math.ceil(amount * multiplier)]));
-  if (!canAfford(game, cost)) return fail("Rakentamiseen tarvitaan lisää resursseja.");
+  if (!canAffordResources(game, upgrade.cost)) return fail("Rakentamiseen tarvitaan lisää resursseja.");
 
-  spend(game, cost);
+  spend(game, upgrade.cost);
   system.buildings[buildingId] = level + 1;
   addLog(game, "construction", building.name + " rakennettu", system.name + " saavutti tason " + (level + 1) + ".");
   return succeed(building.name + " valmistui kohteessa " + system.name + ".");
@@ -182,7 +211,7 @@ export function proposeTreaty(game, factionId, type) {
   const threshold = Math.max(18, (type === "research" ? 38 : 28) - (hasTech(game, "commonwealth") ? 10 : 0));
   if (relation < threshold) return fail("Sopimus vaatii paremmat välit. Lähetä ensin lähettiläs.");
   const cost = type === "trade" ? { credits: 18, influence: 10 } : { credits: 12, influence: 16 };
-  if (!canAfford(game, cost)) return fail("Valtion kassassa ei ole sopimukseen vaadittavaa summaa.");
+  if (!canAffordResources(game, cost)) return fail("Valtion kassassa ei ole sopimukseen vaadittavaa summaa.");
   spend(game, cost);
   const duration = (type === "trade" ? 18 : 24) + (hasTech(game, "interstellar-law") ? 2 : 0);
   game.player.treaties.push({ factionId, type, remaining: duration });
@@ -194,9 +223,8 @@ export function proposeTreaty(game, factionId, type) {
 export function buildFleet(game, systemId) {
   const system = getSystem(game, systemId);
   if (!system || system.owner !== "player" || !system.colony) return fail("Laivue tarvitsee oman siirtokunnan telakan.");
-  const discount = hasTech(game, "modular-hulls") ? 6 : 0;
-  const cost = { credits: 54, alloys: Math.max(18, 36 - discount) };
-  if (!canAfford(game, cost)) return fail("Laivueen rakentaminen vaatii lisää krediittejä ja seoksia.");
+  const cost = defenseFleetCost(game);
+  if (!canAffordResources(game, cost)) return fail("Laivueen rakentaminen vaatii lisää krediittejä ja seoksia.");
   spend(game, cost);
   const number = game.player.fleets.filter((fleet) => fleet.role === "defense").length + 1;
   game.player.fleets.push({
@@ -211,8 +239,8 @@ export function buildFleet(game, systemId) {
 export function buildColonyShip(game, systemId) {
   const system = getSystem(game, systemId);
   if (!system || system.owner !== "player" || !system.colony) return fail("Asutusalus tarvitsee oman siirtokunnan telakan.");
-  const cost = hasTech(game, "modular-hulls") ? { credits: 42, alloys: 24 } : { credits: 52, alloys: 32 };
-  if (!canAfford(game, cost)) return fail("Asutusalus vaatii lisää krediittejä ja seoksia.");
+  const cost = colonyShipCost(game);
+  if (!canAffordResources(game, cost)) return fail("Asutusalus vaatii lisää krediittejä ja seoksia.");
   spend(game, cost);
   game.player.colonyShips += 1;
   addLog(game, "fleet", "Asutusalus valmistui", "Uusi asutusalus odottaa järjestelmässä " + system.name + ".");
@@ -227,7 +255,7 @@ export function moveFleet(game, fleetId, targetSystemId) {
   const route = shortestRoute(game, fleet.systemId, targetSystemId);
   if (!route || route.length === 0) return fail("Laivue on jo kohteessa tai reittiä ei löydy.");
   const cost = { fuel: Math.max(1, route.length * 2) };
-  if (!canAfford(game, cost)) return fail("Laivue tarvitsee lisää polttoainetta.");
+  if (!canAffordResources(game, cost)) return fail("Laivue tarvitsee lisää polttoainetta.");
   spend(game, cost);
   fleet.path = route;
   fleet.destination = targetSystemId;
@@ -240,9 +268,26 @@ export function eventChoiceAvailable(game, choice) {
   return Object.entries(choice.effects.resources || {}).every(([key, amount]) => amount >= 0 || game.player.resources[key] >= Math.abs(amount));
 }
 
+export function hasAvailableEventChoice(game, event) {
+  return Boolean(event?.choices?.some((choice) => eventChoiceAvailable(game, choice)));
+}
+
+export const EMERGENCY_EVENT_CHOICE_ID = "emergency-resolution";
+
 export function resolveEvent(game, choiceId) {
   if (!game.event) return fail("Ei ratkaistavaa tapahtumaa.");
   const event = EVENTS.find((item) => item.id === game.event.id);
+  if (!event) return fail("Tapahtumaa ei löydy.");
+  if (choiceId === EMERGENCY_EVENT_CHOICE_ID) {
+    if (hasAvailableEventChoice(game, event)) return fail("Kriisipäätös on käytettävissä vasta, kun tavalliset ratkaisut eivät ole mahdollisia.");
+    game.player.globalStability = Math.max(0, game.player.globalStability - 5);
+    ownedSystems(game).forEach((system) => {
+      system.stability = Math.max(0, system.stability - 4);
+    });
+    game.event = null;
+    addLog(game, "event", event.title, "Neuvosto lykkäsi ratkaisua resurssipulan vuoksi. Yhteiskunnallinen vakaus heikkeni.");
+    return succeed("Kriisipäätös kirjattiin. Tapahtuma ei enää estä seuraavaa vuoroa.");
+  }
   const choice = event && event.choices.find((item) => item.id === choiceId);
   if (!event || !choice) return fail("Tapahtumavalintaa ei löydy.");
   if (!eventChoiceAvailable(game, choice)) return fail("Valinnassa vaadittavaa resurssia ei ole riittävästi.");
