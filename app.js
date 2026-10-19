@@ -711,6 +711,7 @@
     else if (typeof reducedMotion.addListener === "function") reducedMotion.addListener(requestSceneRender);
   }
 
+  saveState();
   render();
   resizeCanvas();
 })();
