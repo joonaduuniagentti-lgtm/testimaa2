@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { SCREEN_DEFS } from "../src/data.js";
+import { beginExpedition, shortestRoute } from "../src/actions.js";
 import { renderMapNode } from "../src/galaxy-map.js";
 import { renderApp } from "../src/view.js";
 import { createGame } from "../src/world.js";
@@ -57,4 +58,19 @@ test("unknown systems are keyboard selectable without revealing their names", ()
   assert.match(html, new RegExp(`Tuntematon järjestelmä · kohde ${target.number}`));
   assert.match(html, /data-action="expedition"/);
   assert.doesNotMatch(html, new RegExp(target.name));
+});
+
+test("fleet screens show remaining travel time after survey research", () => {
+  const game = createGame("fleet-eta-view-test");
+  const scout = game.player.fleets.find((fleet) => fleet.role === "survey");
+  const target = game.systems.filter((system) => !system.discovered)
+    .map((system) => ({ system, route: shortestRoute(game, scout.systemId, system.id) }))
+    .find(({ route }) => route?.length >= 3);
+  assert.ok(target);
+
+  game.player.technologies.push("survey-lattices");
+  assert.equal(beginExpedition(game, target.system.id).ok, true);
+  game.ui.screen = "fleets";
+  const eta = Math.ceil(target.route.length / 2);
+  assert.match(renderApp(game), new RegExp(`<small>${eta} kk</small>`));
 });
