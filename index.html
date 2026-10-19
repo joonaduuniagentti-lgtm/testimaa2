@@ -3,150 +3,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#09171c">
-    <meta name="description" content="Luo oma pieni saari, lähde tutkimaan ja kerää viisi pientä ihmettä kenttäkirjaasi.">
-    <title>Tähtisaari — pieni tutkimusmatka</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="app.js" defer></script>
+    <meta name="theme-color" content="#071115">
+    <meta name="description" content="Kantama on pelattava tähtivaltakunnan simulaatio: johda taloutta, tiedettä, diplomatiaa ja laivastoa 42 järjestelmän galaksissa.">
+    <title>KANTAMA — tähtivaltakunnan simulaatio</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./app.js"></script>
   </head>
   <body>
-    <a class="skip-link" href="#main">Siirry tutkimaan</a>
-    <div class="app-shell">
-      <header class="topbar">
-        <a class="brand" href="#" aria-label="Tähtisaari – etusivu">
-          <span class="brand__mark" aria-hidden="true">
-            <svg viewBox="0 0 40 40" focusable="false">
-              <path d="M20 3.5 23.8 16l12.7 4-12.7 3.8L20 36.5l-3.8-12.7L3.5 20l12.7-4L20 3.5Z" />
-              <circle cx="20" cy="20" r="2.1" />
-            </svg>
-          </span>
-          <span class="brand__name">Tähtisaari<span class="brand__dot">.</span></span>
-          <span class="brand__caption">PIENI TUTKIMUSMATKA</span>
-        </a>
-        <div class="topbar__right">
-          <span class="topbar__island"><span class="status-light" aria-hidden="true"></span><span data-world-count>Saari 01</span></span>
-          <button class="journal-trigger" type="button" data-open-journal aria-haspopup="dialog">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.5 3.5h11a2 2 0 0 1 2 2v15l-7.5-4-7.5 4v-15a2 2 0 0 1 2-2Z"/><path d="M9 8h6M9 11h6"/></svg>
-            <span>Kenttäkirja</span>
-            <span class="journal-count" data-journal-count>0</span>
-          </button>
-        </div>
-      </header>
-
-      <main class="layout" id="main">
-        <section class="guide" aria-labelledby="main-title">
-          <div class="guide__intro">
-            <p class="eyebrow"><span class="eyebrow__line" aria-hidden="true"></span> OMA PIENI MAAILMASI</p>
-            <h1 id="main-title">Lähde sinne,<br><em>mitä et vielä tunne.</em></h1>
-            <p class="lead">Tähtisaaren löytää jokainen. Se syntyy uudelleen sinun näköiseksesi.</p>
-            <p class="guide__copy">Valitse tämän hetken taivas, saavu saarelle ja anna uteliaisuuden näyttää reitti.</p>
-          </div>
-
-          <fieldset class="mood-picker">
-            <legend>Minkä värinen on tämänhetkinen taivaasi?</legend>
-            <div class="mood-grid">
-              <button class="mood-option" type="button" data-mood="tyyni" aria-pressed="true">
-                <span class="mood-swatch mood-swatch--tyyni" aria-hidden="true"></span>
-                <span><strong>Tyyni</strong><small>hiljainen hetki</small></span>
-              </button>
-              <button class="mood-option" type="button" data-mood="utelias" aria-pressed="false">
-                <span class="mood-swatch mood-swatch--utelias" aria-hidden="true"></span>
-                <span><strong>Utelias</strong><small>uusi suunta</small></span>
-              </button>
-              <button class="mood-option" type="button" data-mood="kipina" aria-pressed="false">
-                <span class="mood-swatch mood-swatch--kipina" aria-hidden="true"></span>
-                <span><strong>Kipinä</strong><small>vähän valoa</small></span>
-              </button>
-              <button class="mood-option" type="button" data-mood="usva" aria-pressed="false">
-                <span class="mood-swatch mood-swatch--usva" aria-hidden="true"></span>
-                <span><strong>Usva</strong><small>jotain piilossa</small></span>
-              </button>
-            </div>
-          </fieldset>
-
-          <div class="journey-actions">
-            <button class="primary-button" type="button" data-explore>
-              <span class="primary-button__text">Astu saarelle</span>
-              <span class="primary-button__icon" aria-hidden="true">↗</span>
-            </button>
-            <button class="text-button" type="button" data-new-island>
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 8.5A8.5 8.5 0 1 0 20.2 14M20 4v5h-5"/></svg>
-              Arvo uusi saari
-            </button>
-          </div>
-
-          <section class="discovery-card" data-discovery-card aria-live="polite" aria-atomic="true">
-            <div class="discovery-card__symbol" data-discovery-symbol aria-hidden="true">✦</div>
-            <div>
-              <p class="discovery-card__eyebrow" data-discovery-eyebrow>ENSIMMÄINEN ASKEL</p>
-              <h2 data-discovery-title>Saari odottaa.</h2>
-              <p data-discovery-text>Viisi pientä löytöä on jo matkalla sinua kohti.</p>
-            </div>
-          </section>
-
-          <div class="progress-area">
-            <div class="progress-area__labels">
-              <span>SAAREN IHMEET</span>
-              <span data-progress-label>0 / 5</span>
-            </div>
-            <div class="progress-track" data-progress role="progressbar" aria-label="Löydetyt saaren ihmeet" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0">
-              <span class="progress-track__fill" data-progress-fill></span>
-            </div>
-            <ol class="progress-dots" aria-hidden="true">
-              <li data-progress-dot="0"></li><li data-progress-dot="1"></li><li data-progress-dot="2"></li><li data-progress-dot="3"></li><li data-progress-dot="4"></li>
-            </ol>
-          </div>
-
-          <p class="privacy-note"><svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 16 5v4.3c0 3.7-2.5 6.2-6 8.2-3.5-2-6-4.5-6-8.2V5l6-2.5Z"/><path d="m7.5 9.8 1.7 1.7 3.5-3.7"/></svg> Löydöt tallentuvat vain tälle laitteelle.</p>
-        </section>
-
-        <section class="scene" aria-label="Generatiivinen saarimaisema">
-          <canvas class="scene__canvas" data-canvas aria-hidden="true"></canvas>
-          <div class="scene__grain" aria-hidden="true"></div>
-          <div class="scene__topline">
-            <span class="scene__coordinates"><span aria-hidden="true">✳</span> KARTOITTAMATON ALUE</span>
-            <span class="scene__weather" data-weather>Tyyni yö</span>
-          </div>
-          <div class="world-label">
-            <p><span data-world-index>SAARI 01</span> <span aria-hidden="true">·</span> <span data-mood-label>TYVEN</span></p>
-            <h2 data-world-name>Sinisen hiljaisuus</h2>
-            <div class="world-label__rule"><span data-world-rule></span></div>
-          </div>
-          <div class="scene__legend"><span class="legend-dot" aria-hidden="true"></span><span>Yksi pieni maailma, vain sinulle</span></div>
-        </section>
-      </main>
-      <footer class="page-footer">
-        <span>TAIVAS ON AUKI, VAIKKA KARTTA EI.</span>
-        <span class="page-footer__right">RAKENNETTU UTELIAISUUDELLE <span aria-hidden="true">✳</span></span>
-      </footer>
-      <p class="sr-only" data-announcement role="status" aria-live="polite"></p>
-    </div>
-
-    <dialog class="journal-dialog" data-journal-dialog aria-labelledby="journal-title">
-      <div class="journal-dialog__inner">
-        <div class="journal-dialog__header">
-          <div>
-            <p class="eyebrow"><span class="eyebrow__line" aria-hidden="true"></span> KOKOELMA MATKAN VARRELTA</p>
-            <h2 id="journal-title">Kenttäkirja<span class="brand__dot">.</span></h2>
-          </div>
-          <button class="icon-button" type="button" data-close-journal aria-label="Sulje kenttäkirja">×</button>
-        </div>
-        <p class="journal-dialog__intro">Jokainen löytö on pieni ikkuna saareen, joka oli olemassa vain tämän retken ajan.</p>
-        <div class="journal-empty" data-journal-empty>
-          <span aria-hidden="true">✧</span>
-          <h3>Kirja on vielä avoin.</h3>
-          <p>Ensimmäinen löytösi saa paikan täällä. Sivu jää vain sinun laitteellesi.</p>
-        </div>
-        <ol class="journal-list" data-journal-list></ol>
-        <div class="journal-dialog__footer">
-          <span data-journal-summary>0 löytöä tallessa</span>
-          <button class="export-button" type="button" data-export disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.5v11m0 0 4-4m-4 4-4-4M5 16.5v4h14v-4"/></svg>
-            Vie kenttäkirja JSON-tiedostona
-          </button>
-        </div>
+    <div id="app" aria-live="off">
+      <div class="boot-screen">
+        <div class="boot-mark">K</div>
+        <p>KANTAMA <span>·</span> valmistellaan komentokeskusta</p>
       </div>
-    </dialog>
-    <noscript><p class="noscript">Tähtisaari tarvitsee JavaScriptin saaren luomiseen. Salli JavaScript ja lataa sivu uudelleen.</p></noscript>
+    </div>
+    <noscript><p class="noscript">Kantama tarvitsee JavaScriptin. Salli se ja lataa sivu uudelleen.</p></noscript>
   </body>
 </html>

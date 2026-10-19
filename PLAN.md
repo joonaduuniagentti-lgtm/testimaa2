@@ -1,43 +1,73 @@
-# Tähtisaari: toteutussuunnitelma
+# KANTAMA — tekninen suunnitelma
 
-## Tavoite
+## Tuote
 
-Rakentaa repoonsa valmis, suomenkielinen generatiivinen tutkimusmatka. Käyttäjä luo oman tunnelmansa mukaisen pienen saaren, tutkii sitä viiden löydön verran ja kerää löydöt henkilökohtaiseen kenttäkirjaan. Kokemus on rauhallinen, leikkisä, yksityinen ja käytettävä myös puhelimella.
+Kantama on selaimessa pelattava, vuoropohjainen tähtivaltakunnan simulaatio. Pelaaja aloittaa yhden siirtokunnan ja pienen tutkimuslaivueen kanssa. Hän laajentaa tunnettua galaksia retkikunnilla, rakentaa tuotantoketjuja, asuttaa elinkelpoisia maailmoja, ohjaa teknologista kehitystä ja neuvottelee neljän itsenäisen vallan kanssa. Galaksi reagoi jokaiseen kuukauteen: siirtokunnat tuottavat, väestö kasvaa tai levottomuus lisääntyy, tekoälyvaltiot laajenevat, laivastot liikkuvat ja tapahtumat muuttavat suunnitelmia.
 
-## Rajaukset ja tekniset valinnat
+Tavoite ei ole yksi irrallinen näkymä vaan pelattava strategiasilmukka, jonka voi aloittaa, tallentaa, jatkaa, viedä tiedostoon ja voittaa usealla tavalla.
 
-- Ei kirjautumista, palvelinta, ulkoisia kirjastoja, fonttipyyntöjä tai seurantaa. Sivun voi avata paikallisesti ja julkaista sellaisenaan staattisena sivuna.
-- Käyttöliittymä on semanttista HTML:ää. Maisema piirtyy omaan responsiiviseen canvas-elementtiinsä, jonka rinnalla kaikki toiminnot ja sisältö ovat tavallisia saavutettavia HTML-elementtejä.
-- Neljä tunnelmaa muuttaa saaren värimaailmaa. Saari saa siemenen, nimen ja toistettavan löytöjärjestyksen, jotta näkymä pysyy samanlaisena sivun päivityksen jälkeen.
-- Edistyminen ja kenttäkirja tallentuvat selaimen localStorageen. JSON-vienti antaa käyttäjälle oman kopion löytömuistoista.
-- Canvas-animaatio kunnioittaa järjestelmän vähennetyn liikkeen asetusta. Kaikki keskeiset toiminnot toimivat näppäimistöllä, kosketuksella ja hiirellä.
+## Pelin ydinsilmukka
+
+1. Tarkastele resurssien tuloa, tutkimusta ja valtiokohtaista tilannetta.
+2. Valitse strateginen teko: perusta siirtokunta, rakenna, tutki, lähetä retkikunta, suuntaa laivasto, säädä verotusta tai neuvottele.
+3. Vie aikaa yksi kuukausi kerrallaan tai neljännes kerrallaan.
+4. Ratkaise tapahtumien valinnat ja reagoi simulaation seurauksiin.
+5. Rakenna kohti tieteellistä, diplomaattista tai alueellista voittoa.
+
+## Sisältöraja
+
+- 42 proseduraalisesti nimettyä tähtijärjestelmää, sidottu tähtiväyläverkko ja sumukartta.
+- Pelaajan valtio sekä neljä eri tavoin käyttäytyvää tekoälyvaltaa.
+- Kuusi resurssia, siirtokuntien väestö ja vakaus, kuusi rakennustyyppiä ja tuotantovaikutukset.
+- Neljä tutkimushaaraa ja 16 avattavaa teknologiaa.
+- Tutkimusretket, laivastojen reitit ja kuukausittainen liike.
+- Harvinainen, käsin kirjoitettu tähtilöytö, joka avaa oman tarinan ja pysyvän muiston.
+- Suhteet, diplomaattiset lähetystöt, kauppasopimukset ja tutkimusliitot.
+- Tapahtumakortit valintoineen, tapahtumaloki, resurssihistoria ja kolme voittoehtoa.
+- Paikallinen automaattitallennus, JSON-varmuuskopio ja turvallinen tuontivalidointi.
+- Responsiivinen komentokeskus, hiirellä/kosketuksella panoroitava ja zoomattava tähtikartta sekä graafit.
+
+## Arkkitehtuuri
+
+- src/random.js: siemenpohjainen PRNG. Maailman luonti ja simulaatio ovat toistettavia.
+- src/world.js: staattiset määrittelyt ja 42 järjestelmän proseduraalinen generointi.
+- src/actions.js: pelaajan komennot, kustannus- ja kelpoisuussäännöt.
+- src/simulation.js: kuukauden siirtymä, talous, väestö, AI, laivueet, tapahtumat ja voitot.
+- src/storage.js: skeemaversioitu paikallistallennus sekä tuonti ja vienti.
+- src/galaxy-map.js: responsiivinen Canvas-kartta, pan/zoom ja järjestelmän valinta.
+- src/charts.js: taloushistorian piirtäminen ilman ulkoisia kirjastoja.
+- src/view.js: saavutettava HTML-näkymä jokaiselle komentokeskuksen osalle.
+- src/main.js: tapahtumien sidonta ja näkymän sekä pelitilan yhteensovitus.
+- tests/: Node.js:n omilla testityökaluilla simulaation invarianssit ja pelikierrot.
+
+Toteutus on riippumaton ulkoisista kirjastoista ja API-palveluista. Samaa puhdasta simulaatiomoottoria käytetään käyttöliittymässä ja testeissä.
 
 ## Toteutusvaiheet
 
-1. **Suunta ja runko:** määrittele tunnelma, pieni pelisilmukka, saaren tilamalli ja responsiivinen näkymä. Valmis.
-2. **Generatiivinen maisema:** piirrä yötaivas, meri, saari, kasvillisuus, reitti ja löytöjen valot; lisää neljä väripalettia sekä hillitty liike. Valmis.
-3. **Tutkiminen:** lisää neljä tunnelmavalintaa, saaren arpominen ja viisi erilaista löytöä. Viides avaa yllätyslöydön. Valmis.
-4. **Muisti ja yksityisyys:** tallenna tila paikallisesti, rakenna kenttäkirja, päivitä tilan palautuminen ja lisää JSON-vienti. Valmis.
-5. **Viimeistely ja laadunvarmistus:** tarkista HTML:n rakenne, mobiilin asettelu, näppäimistöpolku, virhetilanteet sekä JavaScriptin syntaksi. Valmis.
+1. **Rajaa maailma ja testattavat säännöt.** Määrittele skeema, siemenpohjainen satunnaisuus, galaksin verkko ja talouden yksikkötestattavat funktiot.
+2. **Luo galaksi.** Generoi 42 ainutkertaista maailmaa, reitit, löydettävyys, resurssipotentiaali ja viisi valtaa.
+3. **Tee komentotalous.** Toteuta tuotantoketjut, resurssikustannukset, väestö, vakaus, veropolitiikka ja tutkimuksen eteneminen.
+4. **Lisää liike ja valtapeli.** Toteuta reitinhaku, tutkimusretket, laivastojen liike, tekoälyvaltioiden päätökset ja diplomatia.
+5. **Rakenna tapahtumajärjestelmä ja voitot.** Tapahtumissa on keskenään erilaiset valinnat ja laskettavat seuraukset; voittopolut mitataan simulaatiosta.
+6. **Tee komentokeskus.** Rakenna kartta, tilannekuva, siirtokunnat, teknologiat, diplomatia, laivastot ja kronikka omiksi näkymikseen.
+7. **Tee tallennuksesta osa peliä.** Palauta sama siemen, tapahtumaloki, reitit ja edistyminen; anna käyttäjän varmuuskopioida pelitila.
+8. **Testaa järjestelmärajat ja julkaise.** Aja simulaatiotestejä, tarkista reitit, resurssit, tuonti, saavutettavuuden peruspolku ja repoon päätyvät tiedostot.
 
-## Tilarakenne
+## Valmiuden hyväksymiskriteerit
 
-- current: saaren siemen, nimi, tunnelma, viiden löydön järjestys ja etenemisen vaihe.
-- worldCount: käyttäjän luomien saarten määrä.
-- journal: järjestetty paikallinen kokoelma löydöistä saarineen ja aikaleimoineen.
-- Tallennuksen versio on mukana, jotta tuleva rakennepäivitys voidaan erottaa vanhasta selaindatasta.
+- Sama siemen antaa saman galaksin ja 12 kuukauden simulaatiohistorian.
+- Generoidussa verkossa jokaisella järjestelmällä on naapurit, eikä järjestelmien nimiä tai tunnisteita ole kahdesti.
+- Komento ei kuluta resursseja, jos se hylätään; hyväksytty teko veloitetaan täsmälleen kerran.
+- Retkikunta etenee reittinsä mukaisesti ja paljastaa kohdejärjestelmän saapuessaan.
+- Kuukausi tuottaa tuloja, maksaa väestön ruoan, kasvattaa tutkimusta, vanhentaa sopimuksia ja tallentaa historiapisteen.
+- Tapahtumavalinta muuttaa pelitilaa, ja voittoehdot syntyvät vain niitä vastaavista pelitilan arvoista.
+- Vienti voidaan tuoda takaisin; väärä tai rikkinäinen JSON ei korvaa käynnissä olevaa tallennusta.
+- npm test toimii ilman verkkoa tai kolmannen osapuolen paketteja.
+- Käyttöliittymän pääpolku toimii näppäimistöllä ja kapealla näytöllä.
 
-## Hyväksymiskriteerit
+## Riskit ja rajaukset
 
-- Ensimmäinen saari ja näkymä syntyvät heti ilman asennusta.
-- Uusi saari vaihtaa siemenen ja nimen; tunnelmaa voi vaihtaa milloin tahansa.
-- Viiden löydön jälkeen edistymispalkki täyttyy, viides salaisuus näkyy ja lisälöytö ei monista kirjaa.
-- Kenttäkirja ja JSON-vienti sisältävät samat tallennetut löydöt.
-- Tyylit ja kuvitus mukautuvat kapealle näytölle; canvas ei estä käyttöliittymän käyttöä.
-- Animaatio pysähtyy vähennetyn liikkeen asetuksella. Käyttöliittymän palautteet ilmoitetaan ruudunlukijalle.
-
-## Mahdolliset jatkot
-
-1. Lisää kartalle nimettyjä alueita, joihin voi kulkea eri järjestyksessä.
-2. Lisää tunnelmakohtaiset pienet äänimaisemat vain käyttäjän erillisellä valinnalla.
-3. Lisää jaettava staattinen saarikortti, joka ei sisällä kenttäkirjaa tai selaimen muita tietoja.
+- Tämä on yksinpelattava simulaatio, ei verkkopeli. Tallennus ja tekoäly jäävät käyttäjän selaimeen.
+- 42 järjestelmää ja vuoropohjainen eteneminen pitävät generoinnin ymmärrettävänä; peli ei yritä olla rajaton universumi.
+- Taistelut mallinnetaan nykyversiossa resurssien, reittien ja tapahtumien kautta. Erillinen taktinen taistelunäkymä on jatkokehityskohde.
+- Canvas piirtää kartan itse, jotta projekti säilyy riippuvuudettomana ja julkaistavana staattisena sivuna.

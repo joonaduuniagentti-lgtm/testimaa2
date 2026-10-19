@@ -1,38 +1,43 @@
-# Tähtisaari
+# KANTAMA
 
-Pieni suomenkielinen generatiivinen tutkimusmatka. Luo tunnelma, saavu omalle saarelle ja etsi viisi ihmettä. Viimeinen löytö on salainen.
+Selainpohjainen tähtivaltakunnan strategiasimulaatio. Johda yhtä nuorta valtiota läpi galaksin ensimmäisen laajentumiskauden: kartoita tuntemattomia järjestelmiä, perusta siirtokuntia, rakenna tuotantoketjuja, ohjaa tutkimusta ja neuvottele neljän kilpailevan sivilisaation kanssa.
 
-## Avaa
+## Pelaa
 
-Avaa index.html selaimessa. Asennusta, build-vaihetta tai verkkoyhteyttä ei tarvita. GitHub Pages toimii suoraan tämän kansion julkaisulähteenä.
+Vaatimukset: Node.js 18+ ja npm. Riippuvuuksia ei asenneta.
 
-## Mitä mukana
+1. Suorita npm run dev.
+2. Avaa palvelimen tulostama paikallinen osoite (oletuksena http://localhost:4173).
+3. Aja testit komennolla npm test.
 
-- Neljä väritunnelmaa, siemenellä generoitu saaren nimi ja toistettava maisema.
-- Elävä canvas-kuvitus: taivas, tähdet, meri, saari, polku, kasvillisuus ja löytöjen hehku.
-- Viiden löydön retki ja salainen loppulöytö.
-- Selaimen paikallinen kenttäkirja ja JSON-vienti.
-- Näppäimistö- ja kosketuskäyttö sekä vähennetyn liikkeen tuki.
+Vaihtoehtoisesti julkaise repoa staattisena GitHub Pages -sivuna.
 
-Toteutussuunnitelma ja hyväksymiskriteerit ovat PLAN.md-tiedostossa.
+## Komentokeskuksen näkymät
 
-## Tietosuoja
+- **Komentosilta:** talous, strategiset tavoitteet, kartta ja päivän tärkeät tapahtumat.
+- **Galaksi:** 42 järjestelmän interaktiivinen kartta, järjestelmätiedot, tutkimusretket ja asuttaminen.
+- **Siirtokunnat:** väestö, vakaus, rakennukset ja planeettakohtainen tuotanto.
+- **Tutkimus:** neljän haaran teknologiapuu ja käynnissä oleva hanke.
+- **Diplomatia:** neljä tekoälyvaltaa, suhteet, lähetystöt ja sopimukset.
+- **Laivastot:** reitit, laivueet, niiden sijainnit sekä uusien alusten rakentaminen.
+- **Kronikka:** resurssikäyrä, historia ja viimeisimmät tapahtumat.
 
-Saaren tila ja löydöt jäävät tälle selaimelle localStorageen. Sovellus ei lähetä niitä mihinkään. Kenttäkirjan painike lataa käyttäjän pyynnöstä JSON-kopion omalle laitteelle.
+Kartoitettavaksi jää myös yksi harvinainen löytö. Se kannattaa etsiä itse.
 
-## Rakenne
+## Strategian peruspolku
 
-- index.html: sisältö ja saavutettavat ohjaimet
-- styles.css: responsiivinen visuaalinen suunnittelu
-- app.js: saaren generointi, maisema, tallennus ja löydöt
-- PLAN.md: suunnitelma sekä toteutuksen hyväksymiskriteerit
+Jokainen vuoro on yksi kuukausi. Siirtokunnat tuottavat resursseja, väestö kuluttaa ruokaa ja laboratorio kasvattaa tutkimusta. Tekoälyvaltiot laajentuvat ja sopimukset vanhenevat. Vuoroja voi siirtää yksitellen tai neljännesvuosittain. Tapahtumat pysäyttävät kellon, kunnes niiden valinta on ratkaistu.
 
-## Käyttöönoton tarkistus
+Voittoon on kolme tietä: tieteellinen läpimurto, usean valtion rauhanliitto tai laaja tähtirintama. Tavoitteet näkyvät komentosillalla.
 
-1. Avaa index.html selaimessa.
-2. Valitse tunnelma ja lähde tutkimaan.
-3. Etsi viisi löytöä ja avaa Kenttäkirja.
-4. Päivitä sivu ja tarkista, että nykyinen saari sekä löydöt ovat tallella.
-5. Vähennetyn liikkeen asetuksen voi tarkistaa käyttöjärjestelmän saavutettavuusasetuksista.
+## Tietosuoja ja tallennus
 
-Tämä on staattinen selainkokemus: lisäkirjastoja tai build-komentoja ei ole.
+Peli tallentuu selaimen localStorageen. Varmuuskopioi tilanne JSON-tiedostoksi tai tuo se takaisin myöhemmin; tiedostoa ei lähetetä mihinkään. Pelin siemen mahdollistaa saman lähtögalaksin luomisen uudelleen.
+
+## Tekninen rakenne
+
+- src/ sisältää erilliset maailman, talouden, simulaation, toiminta-, tallennus- ja käyttöliittymämoduulit.
+- tests/ tarkistaa determinismin, resurssisäännöt, reitit, tapahtumat ja tallennusmuodon.
+- PLAN.md kuvaa arkkitehtuurin, vaiheet ja hyväksymiskriteerit.
+
+Ei ulkoisia JavaScript-kirjastoja, fonttipalveluja tai taustapalvelua.
