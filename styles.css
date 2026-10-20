@@ -343,6 +343,8 @@ p { color: var(--muted); line-height: 1.65; }
 .treaty-status { display: grid; grid-template-columns: 1fr auto; gap: 4px; padding: 11px 0 0; margin-top: 11px; border-top: 1px solid var(--line); color: #8ba095; font-size: 9px; }
 .treaty-status b { color: #a8d1b9; font: 10px var(--mono); }
 .treaty-status small { grid-column: 1 / -1; color: #71867d; font-size: 8px; }
+.accord-status { grid-template-columns: 1fr; padding: 12px 16px; margin: 0 0 11px; border: 1px solid var(--line); background: rgba(16, 30, 34, .78); }
+.accord-status b { line-height: 1.55; }
 .diplomacy-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding-top: 10px; margin-top: 11px; border-top: 1px solid var(--line); }
 .diplomacy-actions .button:first-child { grid-column: 1 / -1; justify-content: space-between; }
 .diplomacy-actions .button { min-height: 31px; padding: 0 7px; font-size: 8px; }

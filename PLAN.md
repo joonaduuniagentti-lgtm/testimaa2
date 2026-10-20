@@ -22,7 +22,7 @@ Tavoite ei ole yksi irrallinen näkymä vaan pelattava strategiasilmukka, jonka 
 - Neljä tutkimushaaraa ja 16 avattavaa teknologiaa.
 - Tutkimusretket, laivastojen reitit ja kuukausittainen liike.
 - Harvinainen, käsin kirjoitettu tähtilöytö, joka avaa oman tarinan ja pysyvän muiston.
-- Suhteet, diplomaattiset lähetystöt, kauppasopimukset ja tutkimusliitot.
+- Suhteet, kustannukselliset diplomaattiset lähetystöt, kauppasopimukset ja tutkimusliitot; liittovoitto vaatii kolmen sopimuksen, molempien sopimusmuotojen ja vähintään +40 keskimääräisen suhteen ylläpitämistä kuuden kuukauden ajan.
 - Kymmenen tapahtumakorttia valintoineen, mahdottoman maksutilanteen kriisipäätös, tapahtumaloki, resurssihistoria ja kolme mitattavaa voittoehtoa.
 - Paikallinen automaattitallennus, JSON-varmuuskopio ja turvallinen tuontivalidointi.
 - Responsiivinen komentokeskus, hiirellä/kosketuksella panoroitava ja zoomattava tähtikartta sekä graafit.
@@ -60,8 +60,8 @@ Toteutus on riippumaton ulkoisista kirjastoista ja API-palveluista. Samaa puhdas
 - Komento ei kuluta resursseja, jos se hylätään; hyväksytty teko veloitetaan täsmälleen kerran.
 - Retkikunta etenee reittinsä mukaisesti ja paljastaa kohdejärjestelmän saapuessaan.
 - Kuukausi tuottaa tuloja, maksaa väestön ruoan, kasvattaa tutkimusta, vanhentaa sopimuksia ja tallentaa historiapisteen.
-- Tapahtumavalinta muuttaa pelitilaa, lukkiutunut maksutilanne voidaan aina ratkaista, ja voittoehdot syntyvät vain niitä vastaavista pelitilan arvoista.
-- Vienti voidaan tuoda takaisin; väärä tai rikkinäinen JSON ei korvaa käynnissä olevaa tallennusta.
+- Tapahtumavalinta muuttaa pelitilaa, lukkiutunut maksutilanne voidaan aina ratkaista, ja voittoehdot syntyvät vain niitä vastaavista pelitilan arvoista; diplomaattinen voitto edellyttää kuutta peräkkäistä kelvollista kuukautta.
+- Vienti voidaan tuoda takaisin; väärä tai rikkinäinen JSON, rikkinäiset historia- ja lokirivit tai käyttöliittymän tarvitsemattomat tiedot eivät korvaa käynnissä olevaa tallennusta.
 - Rakennusnäkymä näyttää seuraavan tason kustannuksen ja lisätuotannon; hintojen teknologiamuutokset näkyvät myös kartalla ja laivastoissa.
 - Kartan zoomaus ja pan pysyvät samoina näkymää uudelleen piirrettäessä.
 - npm test toimii ilman verkkoa tai kolmannen osapuolen paketteja.

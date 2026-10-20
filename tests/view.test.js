@@ -122,6 +122,24 @@ test("building and colonization previews show current prices and next-level outp
   assert.match(renderApp(game), /38 KRD · 28 SEK · 8 POL/);
 });
 
+test("diplomacy shows current costs and sustained alliance progress", () => {
+  const game = createGame("diplomacy-preview-test");
+  game.ui.screen = "diplomacy";
+  game.player.accordProgress = 3;
+  const html = renderApp(game);
+  assert.match(html, /Lähetä lähetystö <span>10 VAI<\/span>/);
+  assert.match(html, /Kauppasopimus <span>24 KRD · 14 VAI<\/span>/);
+  assert.match(html, /Tutkimusliitto <span>20 KRD · 22 VAI<\/span>/);
+  assert.match(html, /ka\. [^<]*\/40 · luottamus 0\/6 kk/);
+
+  const ready = createGame("diplomacy-progress-preview-test");
+  ready.ui.screen = "diplomacy";
+  ready.player.treaties = ready.factions.slice(0, 3).map((faction, index) => ({ factionId: faction.id, type: index === 0 ? "research" : "trade", remaining: 6 }));
+  Object.keys(ready.player.relations).forEach((id) => { ready.player.relations[id] = 50; });
+  ready.player.accordProgress = 3;
+  assert.match(renderApp(ready), /luottamus 3\/6 kk/);
+});
+
 test("fleet screen explains which frontier garrisons face pressure", () => {
   const game = createGame("frontier-forecast-view-test");
   const home = game.systems.find((system) => system.owner === "player");

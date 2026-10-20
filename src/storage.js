@@ -1,4 +1,5 @@
 import { BUILDINGS, EVENTS, FACTIONS, SCREEN_DEFS, TECHS } from "./data.js";
+import { ACCORD_REQUIRED_MONTHS } from "./simulation.js";
 
 export const SAVE_KEY = "kantama.save.v1";
 const RESOURCE_KEYS = ["credits", "alloys", "food", "fuel", "influence", "science"];
@@ -24,6 +25,14 @@ export function validateSave(game) {
   if (!Number.isInteger(game.turn) || game.turn < 0 || !Number.isInteger(game.year) || game.year < 2000 || !Number.isInteger(game.month) || game.month < 1 || game.month > 12) {
     return { ok: false, reason: "Pelin päivämäärä on virheellinen." };
   }
+  const validDate = (record) => Number.isInteger(record.turn) && record.turn >= 0 && record.turn <= game.turn && Number.isInteger(record.year) && record.year >= 2000 && Number.isInteger(record.month) && record.month >= 1 && record.month <= 12;
+  if (game.history.some((record) => !isObject(record) || !validDate(record) || !isObject(record.resources) || RESOURCE_KEYS.some((key) => !validNumber(record.resources[key], 0, 99999)) || !Number.isInteger(record.colonies) || record.colonies < 0 || record.colonies > game.systems.length || !Number.isInteger(record.technologies) || record.technologies < 0 || record.technologies > TECHS.length || !validNumber(record.relations, -100, 100))) {
+    return { ok: false, reason: "Kuukausihistorian tietueet ovat puutteellisia tai virheellisiä." };
+  }
+  if (game.history.at(-1).turn !== game.turn || game.history.some((record, index) => index > 0 && record.turn <= game.history[index - 1].turn)) return { ok: false, reason: "Kuukausihistorian järjestys tai viimeisin vuoro ei täsmää." };
+  if (game.log.some((record) => !isObject(record) || !validDate(record) || typeof record.type !== "string" || typeof record.title !== "string" || typeof record.text !== "string")) {
+    return { ok: false, reason: "Tapahtumalokin tietueet ovat puutteellisia tai virheellisiä." };
+  }
   if (!Number.isInteger(game.rngState) || game.rngState < 1 || game.rngState > 0xffffffff || !Number.isInteger(game.nextEventTurn) || game.nextEventTurn <= game.turn) {
     return { ok: false, reason: "Simulaation satunnaistila tai tapahtuma-ajastus on virheellinen." };
   }
@@ -35,6 +44,11 @@ export function validateSave(game) {
   const factionIds = new Set(game.factions.map((faction) => faction?.id));
   const expectedFactionIds = new Set(FACTIONS.map((faction) => faction.id));
   if (factionIds.size !== FACTIONS.length || [...factionIds].some((id) => !expectedFactionIds.has(id))) return { ok: false, reason: "Valtioiden tunnisteet eivät täsmää peliversioon." };
+  for (const faction of game.factions) {
+    if (!isObject(faction) || !["name", "short", "motto", "color", "style", "description"].every((key) => typeof faction[key] === "string") || !validNumber(faction.power, 0, 99999) || !validNumber(faction.treasury, 0, 99999) || !validNumber(faction.expansion, 0, 10) || !validNumber(faction.trade, 0, 10) || !validNumber(faction.research, 0, 10) || typeof faction.mood !== "string" || !Number.isInteger(faction.lastMove) || !Array.isArray(faction.treaties)) {
+      return { ok: false, reason: "Valtion tiedoista puuttuu käyttöliittymän tai simulaation tarvitsemia arvoja." };
+    }
+  }
 
   const systemIds = new Set();
   for (const system of game.systems) {
@@ -72,7 +86,7 @@ export function validateSave(game) {
   const techIds = new Set(TECHS.map((tech) => tech.id));
   if (new Set(game.player.technologies).size !== game.player.technologies.length || game.player.technologies.some((id) => !techIds.has(id))) return { ok: false, reason: "Tutkittujen teknologioiden tunnisteet ovat virheelliset." };
   if (game.player.researchId !== null && !techIds.has(game.player.researchId)) return { ok: false, reason: "Aktiivisen tutkimuksen tunnistetta ei löydy." };
-  if (!validNumber(game.player.researchProgress, 0) || !validNumber(game.player.globalStability, 0, 100) || !Number.isInteger(game.player.colonyShips) || game.player.colonyShips < 0) return { ok: false, reason: "Valtion tutkimus-, vakaus- tai asutusalusarvo on virheellinen." };
+  if (!validNumber(game.player.researchProgress, 0) || !validNumber(game.player.globalStability, 0, 100) || !Number.isInteger(game.player.colonyShips) || game.player.colonyShips < 0 || (game.player.accordProgress !== undefined && (!Number.isInteger(game.player.accordProgress) || game.player.accordProgress < 0 || game.player.accordProgress > ACCORD_REQUIRED_MONTHS))) return { ok: false, reason: "Valtion tutkimus-, vakaus-, diplomatia- tai asutusalusarvo on virheellinen." };
   for (const [id, amount] of Object.entries(game.player.researchProgressById)) {
     const tech = TECHS.find((candidate) => candidate.id === id);
     if (!tech || !validNumber(amount, 0, tech.cost)) return { ok: false, reason: "Tallennettu tutkimusedistyminen on virheellinen." };
@@ -104,7 +118,8 @@ export function validateSave(game) {
     }
     treatyFactions.add(treaty.factionId);
   }
-  if (game.event !== null && (!isObject(game.event) || !EVENTS.some((event) => event.id === game.event.id))) return { ok: false, reason: "Tapahtuman tila on virheellinen." };
+  if (game.event !== null && (!isObject(game.event) || !EVENTS.some((event) => event.id === game.event.id) || !Number.isInteger(game.event.turn) || game.event.turn < 0 || game.event.turn > game.turn)) return { ok: false, reason: "Tapahtuman tila on virheellinen." };
+  if (game.victory !== null && (!isObject(game.victory) || !["knowledge", "accord", "frontier"].includes(game.victory.id) || typeof game.victory.title !== "string" || typeof game.victory.detail !== "string" || !validDate(game.victory))) return { ok: false, reason: "Voiton arkistomerkintä on virheellinen." };
   if (!isObject(game.factionWorlds) || [...factionIds].some((id) => !Array.isArray(game.factionWorlds[id]) || new Set(game.factionWorlds[id]).size !== game.factionWorlds[id].length || game.factionWorlds[id].some((systemId) => !systemIds.has(systemId) || game.systems.find((system) => system.id === systemId).owner !== id))) return { ok: false, reason: "Valtioiden tähtialueet ovat virheelliset." };
   return { ok: true, reason: "" };
 }

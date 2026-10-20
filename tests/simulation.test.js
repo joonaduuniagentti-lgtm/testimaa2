@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { BUILDINGS, EVENTS, TECHS } from "../src/data.js";
-import { beginExpedition, buildBuilding, eventChoiceAvailable, fleetTravelMonths, resolveEvent, shortestRoute, startResearch, EMERGENCY_EVENT_CHOICE_ID } from "../src/actions.js";
-import { advanceMonth, borderPressureReport, evaluateVictory } from "../src/simulation.js";
+import { beginExpedition, buildBuilding, envoyCost, eventChoiceAvailable, fleetTravelMonths, proposeTreaty, resolveEvent, sendEnvoy, shortestRoute, startResearch, treatyCost, EMERGENCY_EVENT_CHOICE_ID } from "../src/actions.js";
+import { ACCORD_REQUIRED_MONTHS, advanceMonth, borderPressureReport, estimatedColonyIncome, evaluateVictory } from "../src/simulation.js";
 import { createGame, generateGalaxy, getSystem, ownedSystems } from "../src/world.js";
 import { exportSave, parseSave, saveGame, loadGame, validateSave } from "../src/storage.js";
 
@@ -172,6 +172,47 @@ test("a food shortage at an empty storehouse lowers stability", () => {
   assert.ok(game.player.globalStability < nationalStability);
 });
 
+test("a food balance that reaches exactly zero is not a shortage", () => {
+  const game = createGame("exact-food-balance-test");
+  const home = ownedSystems(game)[0];
+  home.population = 22;
+  home.buildings.farm = 0;
+  const foodNet = estimatedColonyIncome(game).food;
+  assert.ok(foodNet < 0);
+  game.player.resources.food = -foodNet;
+  const colonyStability = home.stability;
+  const nationalStability = game.player.globalStability;
+
+  advanceMonth(game);
+
+  assert.equal(game.player.resources.food, 0);
+  assert.ok(home.stability > colonyStability);
+  assert.ok(game.player.globalStability > nationalStability);
+});
+
+test("diplomatic actions charge their displayed influence and treaty prices", () => {
+  const game = createGame("diplomacy-cost-test");
+  assert.deepEqual(envoyCost(game), { influence: 10 });
+  assert.deepEqual(treatyCost("trade"), { credits: 24, influence: 14 });
+  assert.deepEqual(treatyCost("research"), { credits: 20, influence: 22 });
+  assert.equal(treatyCost("unknown"), null);
+
+  game.player.resources.influence = 9;
+  const before = structuredClone(game.player.relations);
+  assert.equal(sendEnvoy(game, "helion").ok, false);
+  assert.deepEqual(game.player.relations, before);
+  game.player.resources.influence = 10;
+  assert.equal(sendEnvoy(game, "helion").ok, true);
+  assert.equal(game.player.resources.influence, 0);
+
+  game.player.resources.credits = 24;
+  game.player.resources.influence = 14;
+  game.player.relations.nacre = 30;
+  assert.equal(proposeTreaty(game, "nacre", "trade").ok, true);
+  assert.equal(game.player.resources.credits, 0);
+  assert.equal(game.player.resources.influence, 0);
+});
+
 test("an unaffordable event can be closed with a costly crisis decision", () => {
   const game = createGame("event-deadlock-test");
   game.event = { id: "quiet-strike", turn: game.turn };
@@ -261,6 +302,24 @@ test("save export, import, and browser storage round-trip the complete state", (
   const invalidBuildingLevel = structuredClone(game);
   invalidBuildingLevel.systems[0].buildings.farm = 999;
   assert.equal(validateSave(invalidBuildingLevel).ok, false);
+  for (const field of ["history", "log"]) {
+    const nullRecord = structuredClone(game);
+    nullRecord[field][0] = null;
+    assert.equal(validateSave(nullRecord).ok, false, `${field} null entry`);
+    assert.equal(parseSave(exportSave(nullRecord)).ok, false, `${field} null entry import`);
+  }
+  const brokenSnapshot = structuredClone(game);
+  brokenSnapshot.history[0].resources = null;
+  assert.equal(validateSave(brokenSnapshot).ok, false);
+  const brokenLogText = structuredClone(game);
+  brokenLogText.log[0].text = null;
+  assert.equal(validateSave(brokenLogText).ok, false);
+  const brokenAccordProgress = structuredClone(game);
+  brokenAccordProgress.player.accordProgress = 7;
+  assert.equal(validateSave(brokenAccordProgress).ok, false);
+  const legacySave = structuredClone(game);
+  delete legacySave.player.accordProgress;
+  assert.equal(validateSave(legacySave).ok, true);
 });
 
 test("each victory route is derived from actual state", () => {
@@ -274,11 +333,24 @@ test("each victory route is derived from actual state", () => {
   const accord = createGame("victory-accord");
   accord.player.treaties = accord.factions.slice(0, 3).map((faction, index) => ({ factionId: faction.id, type: index === 0 ? "research" : "trade", remaining: 10 }));
   Object.keys(accord.player.relations).forEach((id) => { accord.player.relations[id] = 40; });
+  accord.player.accordProgress = ACCORD_REQUIRED_MONTHS;
   assert.equal(evaluateVictory(accord).id, "accord");
   const weakAccord = createGame("weak-victory-accord");
   weakAccord.player.treaties = accord.player.treaties;
+  weakAccord.player.accordProgress = ACCORD_REQUIRED_MONTHS;
   weakAccord.player.relations.helion = 0;
   assert.equal(evaluateVictory(weakAccord), null);
+
+  const growingAccord = createGame("sustained-victory-accord");
+  growingAccord.player.treaties = growingAccord.factions.slice(0, 3).map((faction, index) => ({ factionId: faction.id, type: index === 0 ? "research" : "trade", remaining: 12 }));
+  Object.keys(growingAccord.player.relations).forEach((id) => { growingAccord.player.relations[id] = 50; });
+  growingAccord.nextEventTurn = 100;
+  tick(growingAccord, ACCORD_REQUIRED_MONTHS - 1);
+  assert.equal(growingAccord.player.accordProgress, ACCORD_REQUIRED_MONTHS - 1);
+  assert.equal(growingAccord.victory, null);
+  tick(growingAccord, 1);
+  assert.equal(growingAccord.player.accordProgress, ACCORD_REQUIRED_MONTHS);
+  assert.equal(growingAccord.victory.id, "accord");
 
   const frontier = createGame("victory-frontier");
   for (const system of frontier.systems.filter((item) => !item.owner).slice(0, 7)) {

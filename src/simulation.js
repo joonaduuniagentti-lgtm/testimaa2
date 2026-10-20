@@ -3,6 +3,8 @@ import { randomFromState, randomInt } from "./random.js";
 import { getSystem, ownedSystems } from "./world.js";
 
 const RESOURCE_KEYS = ["credits", "alloys", "food", "fuel", "influence", "science"];
+export const ACCORD_RELATION_TARGET = 40;
+export const ACCORD_REQUIRED_MONTHS = 6;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -65,7 +67,8 @@ function applyEconomy(game) {
     net[key] = game.player.resources[key] - before;
   });
 
-  const shortage = requestedNet.food < 0 && game.player.resources.food === 0;
+  const rawFoodBalance = previousFood + requestedNet.food;
+  const shortage = rawFoodBalance < -1e-9;
   const policy = POLICIES.find((item) => item.id === game.player.policy) || POLICIES[1];
   ownedSystems(game).forEach((system) => {
     const habitat = system.buildings.habitat || 0;
@@ -270,8 +273,8 @@ export function evaluateVictory(game) {
   let victory = null;
   if (game.player.technologies.length >= 10 && advancedTechnologyCount >= 2) {
     victory = { id: "knowledge", title: "Tieteen kynnys ylitetty", detail: "Kymmenen teknologiaa ja kaksi edistynyttä läpimurtoa avasivat sivilisaatiolle uuden aikakauden." };
-  } else if (activeTreaties >= 3 && treatyTypes.size >= 2 && averageRelation >= 30) {
-    victory = { id: "accord", title: "Yhteinen tähtirintama", detail: "Kolme sopimusta, molemmat yhteistyön muodot ja luottamus valtioiden välillä loivat pysyvän tähtiliiton." };
+  } else if (activeTreaties >= 3 && treatyTypes.size >= 2 && averageRelation >= ACCORD_RELATION_TARGET && (game.player.accordProgress ?? 0) >= ACCORD_REQUIRED_MONTHS) {
+    victory = { id: "accord", title: "Yhteinen tähtirintama", detail: "Kolme aktiivista sopimusta, molemmat yhteistyön muodot ja kuuden kuukauden ajan ylläpidetty luottamus loivat pysyvän tähtiliiton." };
   } else if (colonies >= 8 && averageStability >= 70) {
     victory = { id: "frontier", title: "Kahdeksan kotia", detail: "Kahdeksan vakaata siirtokuntaa muodostivat uuden tähtirintaman." };
   }
@@ -299,6 +302,11 @@ export function advanceMonth(game) {
   advanceTreaties(game);
   simulateFactions(game);
   simulateBorderPressure(game);
+  const activeTreaties = game.player.treaties.filter((treaty) => treaty.remaining > 0);
+  const treatyTypes = new Set(activeTreaties.map((treaty) => treaty.type));
+  const averageRelation = Object.values(game.player.relations).reduce((sum, relation) => sum + relation, 0) / game.factions.length;
+  const allianceReady = activeTreaties.length >= 3 && treatyTypes.size >= 2 && averageRelation >= ACCORD_RELATION_TARGET;
+  game.player.accordProgress = allianceReady ? Math.min(ACCORD_REQUIRED_MONTHS, (game.player.accordProgress ?? 0) + 1) : 0;
   game.history.push(snapshot(game));
   if (game.history.length > 120) game.history.shift();
 

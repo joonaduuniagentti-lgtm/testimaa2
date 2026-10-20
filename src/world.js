@@ -149,7 +149,7 @@ export function createGame(seed = "KANTAMA-01") {
         { id: "fleet-scout", name: "Pohjantähti", role: "survey", ships: 2, systemId: "sys-01", path: [], destination: null, status: "valmiina", strength: 8 },
         { id: "fleet-guard", name: "Siniura", role: "defense", ships: 3, systemId: "sys-01", path: [], destination: null, status: "vartiossa", strength: 15 }
       ],
-      colonyShips: 2, globalStability: 76, colonizationBonus: 0, relics: []
+      colonyShips: 2, globalStability: 76, colonizationBonus: 0, relics: [], accordProgress: 0
     },
     event: null,
     log: [

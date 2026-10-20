@@ -46,6 +46,21 @@ export function defenseFleetCost(game) {
   return { credits: 54, alloys: Math.max(18, 36 - (hasTech(game, "modular-hulls") ? 6 : 0)) };
 }
 
+export function envoyCost() {
+  return { influence: 10 };
+}
+
+export function treatyCost(type) {
+  if (type === "trade") return { credits: 24, influence: 14 };
+  if (type === "research") return { credits: 20, influence: 22 };
+  return null;
+}
+
+export function treatyThreshold(game, type) {
+  if (!["trade", "research"].includes(type)) return Infinity;
+  return Math.max(18, (type === "research" ? 38 : 28) - (hasTech(game, "commonwealth") ? 10 : 0));
+}
+
 export function colonyShipCost(game) {
   return hasTech(game, "modular-hulls") ? { credits: 42, alloys: 24 } : { credits: 52, alloys: 32 };
 }
@@ -195,8 +210,9 @@ export function setPolicy(game, policyId) {
 export function sendEnvoy(game, factionId) {
   const faction = game.factions.find((item) => item.id === factionId);
   if (!faction) return fail("Valtiota ei löydy.");
-  if (game.player.resources.influence < 7) return fail("Lähetystö tarvitsee vähintään 7 vaikutusvaltaa.");
-  game.player.resources.influence -= 7;
+  const cost = envoyCost(game);
+  if (!canAffordResources(game, cost)) return fail("Lähetystö tarvitsee 10 vaikutusvaltaa.");
+  spend(game, cost);
   const bonus = hasTech(game, "mutual-aid") ? 20 : 14;
   game.player.relations[factionId] = Math.min(100, game.player.relations[factionId] + bonus);
   addLog(game, "diplomacy", "Lähetystö saapui: " + faction.short, "Valtiot aloittivat keskustelun uudelleen.");
@@ -208,9 +224,9 @@ export function proposeTreaty(game, factionId, type) {
   if (!faction || !["trade", "research"].includes(type)) return fail("Sopimustyyppiä ei tunneta.");
   if (game.player.treaties.some((treaty) => treaty.factionId === factionId)) return fail("Valtioiden välillä on jo aktiivinen sopimus.");
   const relation = game.player.relations[factionId];
-  const threshold = Math.max(18, (type === "research" ? 38 : 28) - (hasTech(game, "commonwealth") ? 10 : 0));
+  const threshold = treatyThreshold(game, type);
   if (relation < threshold) return fail("Sopimus vaatii paremmat välit. Lähetä ensin lähettiläs.");
-  const cost = type === "trade" ? { credits: 18, influence: 10 } : { credits: 12, influence: 16 };
+  const cost = treatyCost(type);
   if (!canAffordResources(game, cost)) return fail("Valtion kassassa ei ole sopimukseen vaadittavaa summaa.");
   spend(game, cost);
   const duration = (type === "trade" ? 18 : 24) + (hasTech(game, "interstellar-law") ? 2 : 0);
