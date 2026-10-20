@@ -6,13 +6,23 @@ import { mountGalaxyMap, renderMapNode } from "../src/galaxy-map.js";
 import { renderApp } from "../src/view.js";
 import { createGame, getSystem } from "../src/world.js";
 
-function mapRootMock() {
+function mapRootMock(rect = { left: 0, top: 0, width: 1100, height: 760 }) {
   const listeners = new Map();
   const attributes = {};
   const content = { setAttribute(name, value) { attributes[name] = value; } };
+  const scale = Math.min(rect.width / 1100, rect.height / 760);
+  const offsetX = rect.left + (rect.width - 1100 * scale) / 2;
+  const offsetY = rect.top + (rect.height - 760 * scale) / 2;
   const svg = {
     addEventListener(name, listener) { listeners.set(name, listener); },
-    getBoundingClientRect() { return { left: 0, top: 0, width: 1100, height: 760 }; },
+    getBoundingClientRect() { return rect; },
+    getScreenCTM() { return { inverse: () => ({ a: 1 / scale, d: 1 / scale, e: -offsetX / scale, f: -offsetY / scale }) }; },
+    createSVGPoint() {
+      return {
+        x: 0, y: 0,
+        matrixTransform(matrix) { return { x: this.x * matrix.a + matrix.e, y: this.y * matrix.d + matrix.f }; }
+      };
+    },
     setPointerCapture() {}
   };
   return {
@@ -130,14 +140,14 @@ test("diplomacy shows current costs and sustained alliance progress", () => {
   assert.match(html, /Lähetä lähetystö <span>10 VAI<\/span>/);
   assert.match(html, /Kauppasopimus <span>24 KRD · 14 VAI<\/span>/);
   assert.match(html, /Tutkimusliitto <span>20 KRD · 22 VAI<\/span>/);
-  assert.match(html, /ka\. [^<]*\/40 · luottamus 0\/6 kk/);
+  assert.match(html, /ka\. [^<]*\/40 · luottamus 0\/12 kk/);
 
   const ready = createGame("diplomacy-progress-preview-test");
   ready.ui.screen = "diplomacy";
   ready.player.treaties = ready.factions.slice(0, 3).map((faction, index) => ({ factionId: faction.id, type: index === 0 ? "research" : "trade", remaining: 6 }));
   Object.keys(ready.player.relations).forEach((id) => { ready.player.relations[id] = 50; });
   ready.player.accordProgress = 3;
-  assert.match(renderApp(ready), /luottamus 3\/6 kk/);
+  assert.match(renderApp(ready), /luottamus 3\/12 kk/);
 });
 
 test("fleet screen explains which frontier garrisons face pressure", () => {
@@ -171,3 +181,77 @@ test("map zoom survives a view rerender", () => {
   mountGalaxyMap(second, game, () => {});
   assert.equal(second.attributes.transform, savedTransform);
 });
+
+test("map zoom keeps the cursor anchor in place with a letterboxed SVG", () => {
+  const game = createGame("map-letterbox-anchor-test");
+  const rect = { left: 20, top: 10, width: 1440, height: 500 };
+  const root = mapRootMock(rect);
+  const point = { x: 210, y: 300 };
+  const scale = Math.min(rect.width / 1100, rect.height / 760);
+  const offsetX = rect.left + (rect.width - 1100 * scale) / 2;
+  const offsetY = rect.top + (rect.height - 760 * scale) / 2;
+  mountGalaxyMap(root, game, () => {});
+  root.listeners.get("wheel")({
+    preventDefault() {}, deltaY: -40,
+    clientX: offsetX + point.x * scale,
+    clientY: offsetY + point.y * scale
+  });
+
+  const [, translateX, translateY, scaleX, scaleY] = root.attributes.transform.match(/translate\(([-\d.]+) ([-\d.]+)\) scale\(([-\d.]+) ([-\d.]+)\)/);
+  const viewX = -Number(translateX) / Number(scaleX);
+  const viewY = -Number(translateY) / Number(scaleY);
+  assert.ok(Math.abs(viewX - point.x * 0.16) < 1e-8);
+  assert.ok(Math.abs(viewY - point.y * 0.16) < 1e-8);
+});
+
+test("fleet routes hide names until the destination is discovered", () => {
+  const game = createGame("hidden-route-destination-test");
+  const target = game.systems.find((system) => !system.discovered);
+  const scout = game.player.fleets.find((fleet) => fleet.role === "survey");
+  scout.path = [target.id];
+  scout.destination = target.id;
+  game.ui.screen = "fleets";
+  const html = renderApp(game);
+  assert.match(html, new RegExp(`Tuntematon kohde ${target.number}`));
+  assert.doesNotMatch(html, new RegExp(target.name));
+});
+
+test("faction colors come from trusted game definitions, not imported save data", () => {
+  const game = createGame("faction-color-render-test");
+  game.factions[0].color = '#fff" onerror="alert(1)';
+  game.ui.screen = "diplomacy";
+  const html = renderApp(game);
+  assert.doesNotMatch(html, /onerror=/);
+  assert.match(html, /--faction:#f0b785/);
+});
+
+test("colony food warning uses the forecast, not the last clamped monthly delta", () => {
+  const game = createGame("food-forecast-color-test");
+  const home = game.systems.find((system) => system.owner === "player");
+  home.population = 22;
+  home.buildings.farm = 0;
+  game.player.resources.food = 0;
+  game.player.net.food = 0;
+  game.ui.screen = "colonies";
+  const html = renderApp(game);
+  assert.match(html, /Ruokatasapaino<\/span><b class="text-danger">−/);
+});
+
+test("habitat preview reports the real relative growth increase at each level", () => {
+  const game = createGame("habitat-relative-growth-test");
+  const home = game.systems.find((system) => system.owner === "player");
+  home.buildings.habitat = 1;
+  game.ui.screen = "colonies";
+  assert.match(renderApp(game), /väestönkasvu \+13,8%/);
+});
+
+test("save status and recovery options remain visible in the chronicle", () => {
+  const game = createGame("storage-status-view-test");
+  game.ui.screen = "chronicle";
+  const html = renderApp(game, { status: "error", savedTurn: 7, message: "kvota täynnä", recoveryAvailable: true });
+  assert.match(html, /TALLENNUS EI TOIMI/);
+  assert.match(html, /Viimeisin onnistunut vuoro: 7/);
+  assert.match(html, /data-action="export-recovery"/);
+  assert.match(html, /Palautuskopio säilyttää aiemman tallennuksen/);
+});
+

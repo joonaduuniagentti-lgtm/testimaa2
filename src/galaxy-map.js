@@ -1,3 +1,5 @@
+import { FACTIONS } from "./data.js";
+
 const WIDTH = 1100;
 const HEIGHT = 760;
 
@@ -7,7 +9,7 @@ function esc(value) {
 
 function factionColor(game, owner) {
   if (owner === "player") return "#e6c57c";
-  return game.factions.find((faction) => faction.id === owner)?.color || "#789099";
+  return FACTIONS.find((faction) => faction.id === owner)?.color || "#789099";
 }
 
 function systemRadius(system, selected) {
@@ -24,7 +26,7 @@ export function renderMapNode(game, system, selectedId = game.ui.selectedSystemI
   const accessibleName = system.discovered ? system.name : `Tuntematon järjestelmä, kohde ${system.number}`;
   const ring = system.colony ? `<circle cx="${system.x}" cy="${system.y}" r="${radius + 4}" class="colony-ring" stroke="${color}"/>` : "";
   const halo = selected ? `<circle cx="${system.x}" cy="${system.y}" r="18" class="map-halo"/>` : "";
-  return `<g class="map-node ${system.discovered ? "is-known" : "is-hidden"} ${selected ? "is-selected" : ""}" data-system="${system.id}" tabindex="0" role="button" aria-label="${esc(accessibleName)}">${halo}${ring}<circle cx="${system.x}" cy="${system.y}" r="${radius}" fill="${system.discovered ? color : "#68808a"}" class="map-star"/>${label}</g>`;
+  return `<g class="map-node ${system.discovered ? "is-known" : "is-hidden"} ${selected ? "is-selected" : ""}" data-system="${esc(system.id)}" tabindex="0" role="button" aria-label="${esc(accessibleName)}">${halo}${ring}<circle cx="${system.x}" cy="${system.y}" r="${radius}" fill="${system.discovered ? color : "#68808a"}" class="map-star"/>${label}</g>`;
 }
 
 export function mountGalaxyMap(root, game, onSelect, onViewChange = null) {
@@ -59,9 +61,33 @@ export function mountGalaxyMap(root, game, onSelect, onViewChange = null) {
   const content = root.querySelector(".map-content");
   const applyView = () => content.setAttribute("transform", `translate(${-view.x * WIDTH / view.width} ${-view.y * HEIGHT / view.height}) scale(${WIDTH / view.width} ${HEIGHT / view.height})`);
   applyView();
-  const getPoint = (event) => {
+  const getSvgPoint = (clientX, clientY) => {
+    const matrix = svg.getScreenCTM?.();
+    if (matrix?.inverse && svg.createSVGPoint) {
+      const point = svg.createSVGPoint();
+      point.x = clientX;
+      point.y = clientY;
+      return point.matrixTransform(matrix.inverse());
+    }
     const rect = svg.getBoundingClientRect();
-    return { x: view.x + ((event.clientX - rect.left) / rect.width) * view.width, y: view.y + ((event.clientY - rect.top) / rect.height) * view.height };
+    const scale = Math.min(rect.width / WIDTH, rect.height / HEIGHT);
+    const renderedWidth = WIDTH * scale;
+    const renderedHeight = HEIGHT * scale;
+    const offsetX = (rect.width - renderedWidth) / 2;
+    const offsetY = (rect.height - renderedHeight) / 2;
+    return {
+      x: (clientX - rect.left - offsetX) / scale,
+      y: (clientY - rect.top - offsetY) / scale
+    };
+  };
+  const getPoint = (event) => {
+    const point = getSvgPoint(event.clientX, event.clientY);
+    return { x: view.x + (point.x / WIDTH) * view.width, y: view.y + (point.y / HEIGHT) * view.height };
+  };
+  const getDragDelta = (fromX, fromY, toX, toY) => {
+    const start = getSvgPoint(fromX, fromY);
+    const end = getSvgPoint(toX, toY);
+    return { x: end.x - start.x, y: end.y - start.y };
   };
   svg.addEventListener("wheel", (event) => {
     event.preventDefault();
@@ -84,9 +110,9 @@ export function mountGalaxyMap(root, game, onSelect, onViewChange = null) {
   });
   svg.addEventListener("pointermove", (event) => {
     if (!drag) return;
-    const rect = svg.getBoundingClientRect();
-    view.x = Math.max(0, Math.min(WIDTH - view.width, drag.viewX - (event.clientX - drag.x) / rect.width * view.width));
-    view.y = Math.max(0, Math.min(HEIGHT - view.height, drag.viewY - (event.clientY - drag.y) / rect.height * view.height));
+    const delta = getDragDelta(drag.x, drag.y, event.clientX, event.clientY);
+    view.x = Math.max(0, Math.min(WIDTH - view.width, drag.viewX - delta.x / WIDTH * view.width));
+    view.y = Math.max(0, Math.min(HEIGHT - view.height, drag.viewY - delta.y / HEIGHT * view.height));
     applyView();
     persistView();
   });
@@ -99,3 +125,4 @@ export function mountGalaxyMap(root, game, onSelect, onViewChange = null) {
     });
   });
 }
+

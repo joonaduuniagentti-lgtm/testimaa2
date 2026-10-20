@@ -1,10 +1,11 @@
 import { BUILDINGS, EVENTS, POLICIES, TECHS } from "./data.js";
+import { applyResourceChanges } from "./economy.js";
 import { randomFromState, randomInt } from "./random.js";
 import { getSystem, ownedSystems } from "./world.js";
 
 const RESOURCE_KEYS = ["credits", "alloys", "food", "fuel", "influence", "science"];
 export const ACCORD_RELATION_TARGET = 40;
-export const ACCORD_REQUIRED_MONTHS = 6;
+export const ACCORD_REQUIRED_MONTHS = 12;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -58,14 +59,8 @@ function calculateNet(game) {
 
 function applyEconomy(game) {
   const requestedNet = calculateNet(game);
-  const net = { ...requestedNet };
   const previousFood = game.player.resources.food;
-  RESOURCE_KEYS.forEach((key) => {
-    const before = game.player.resources[key] || 0;
-    const requested = net[key];
-    game.player.resources[key] = clamp(before + requested, 0, 99999);
-    net[key] = game.player.resources[key] - before;
-  });
+  const net = applyResourceChanges(game.player.resources, requestedNet);
 
   const rawFoodBalance = previousFood + requestedNet.food;
   const shortage = rawFoodBalance < -1e-9;
@@ -115,32 +110,31 @@ function moveFleets(game) {
     const system = getSystem(game, fleet.systemId);
     fleet.destination = null;
     fleet.status = fleet.role === "survey" ? "valmiina" : "vartiossa";
-    if (fleet.role === "survey" && system && !system.discovered) {
-      system.discovered = true;
-      const extraRange = game.player.technologies.includes("adaptive-maps") ? 2 : 1;
-      if (extraRange > 1) {
-        system.neighbors.forEach((neighborId) => {
-          const neighbor = getSystem(game, neighborId);
-          if (neighbor) neighbor.discovered = true;
-        });
+    if (fleet.role === "survey" && system) {
+      const newlyDiscovered = !system.discovered;
+      if (newlyDiscovered) {
+        system.discovered = true;
+        const extraRange = game.player.technologies.includes("adaptive-maps") ? 2 : 1;
+        if (extraRange > 1) {
+          system.neighbors.forEach((neighborId) => {
+            const neighbor = getSystem(game, neighborId);
+            if (neighbor) neighbor.discovered = true;
+          });
+        }
       }
-      let title = "Uusi järjestelmä: " + system.name;
-      let detail = system.planetName + " kartoitettiin.";
+      let title = newlyDiscovered ? "Uusi järjestelmä: " + system.name : fleet.name + " saapui";
+      let detail = newlyDiscovered ? system.planetName + " kartoitettiin." : "Laivue asettui järjestelmään " + system.name + ".";
       if (system.anomaly === "Kantaman muistijälki" && !game.player.relics.includes("kantama-echo")) {
         game.player.relics.push("kantama-echo");
-        game.player.resources.science += 36;
-        game.player.resources.credits += 24;
-        game.player.resources.influence += 8;
+        applyResourceChanges(game.player.resources, { science: 36, credits: 24, influence: 8 });
         game.player.globalStability = clamp(game.player.globalStability + 4, 0, 100);
         title = "Harvinainen löytö: Kantaman muistijälki";
         detail = "Kapselin sisällä on käsin kaiverrettu viesti: “Kiitos toisesta mahdollisuudesta. Seuraava matka alkaa tästä.” Retkikunta tuo kotiin vierasta tiedettä, resursseja ja yhden uuden tarinan.";
-      } else if (system.anomaly) {
-        game.player.resources.science += 5;
+      } else if (newlyDiscovered && system.anomaly) {
+        applyResourceChanges(game.player.resources, { science: 5 });
         detail += " Retkikunta havaitsi lisäksi: " + system.anomaly + ".";
       }
-      pushLog(game, "discovery", title, detail);
-    } else if (fleet.role === "survey" && system) {
-      pushLog(game, "fleet", fleet.name + " saapui", "Laivue asettui järjestelmään " + system.name + ".");
+      pushLog(game, newlyDiscovered || title.startsWith("Harvinainen löytö:") ? "discovery" : "fleet", title, detail);
     }
   });
 }
@@ -274,7 +268,7 @@ export function evaluateVictory(game) {
   if (game.player.technologies.length >= 10 && advancedTechnologyCount >= 2) {
     victory = { id: "knowledge", title: "Tieteen kynnys ylitetty", detail: "Kymmenen teknologiaa ja kaksi edistynyttä läpimurtoa avasivat sivilisaatiolle uuden aikakauden." };
   } else if (activeTreaties >= 3 && treatyTypes.size >= 2 && averageRelation >= ACCORD_RELATION_TARGET && (game.player.accordProgress ?? 0) >= ACCORD_REQUIRED_MONTHS) {
-    victory = { id: "accord", title: "Yhteinen tähtirintama", detail: "Kolme aktiivista sopimusta, molemmat yhteistyön muodot ja kuuden kuukauden ajan ylläpidetty luottamus loivat pysyvän tähtiliiton." };
+    victory = { id: "accord", title: "Yhteinen tähtirintama", detail: "Kolme aktiivista sopimusta, molemmat yhteistyön muodot ja 12 kuukauden ajan ylläpidetty luottamus loivat pysyvän tähtiliiton." };
   } else if (colonies >= 8 && averageStability >= 70) {
     victory = { id: "frontier", title: "Kahdeksan kotia", detail: "Kahdeksan vakaata siirtokuntaa muodostivat uuden tähtirintaman." };
   }
@@ -337,3 +331,4 @@ export function estimatedColonyIncome(game) {
 export function timeLabel(game) {
   return game.year + "." + String(game.month).padStart(2, "0");
 }
+

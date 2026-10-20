@@ -30,16 +30,18 @@ Jokainen vuoro on yksi kuukausi. Siirtokunnat tuottavat resursseja, väestö kul
 
 Puolustuslaivueet vaikuttavat, kun ne ovat paikallaan omassa Vesperin rajamaailmassa. Joka 12. kuukauden rajatarkastuksessa laivueiden yhteisvoimaa ja siirtokunnan vakautta verrataan uhkaan. Laivastonäkymä näyttää rajamaailmat, puolustusarvot ja seuraavan tarkistuksen.
 
-Voittoon on kolme tietä: 10 teknologiaa, joista vähintään kaksi on tasolta III ylöspäin; kolme samanaikaisesti voimassa olevaa, molempia tyyppejä edustavaa sopimusta ja vähintään +30 keskimääräiset suhteet; tai kahdeksan siirtokuntaa vähintään 70 prosentin keskivakaudella. Tavoitteiden eteneminen näkyy komentosillalla.
+Voittoon on kolme tietä: 10 teknologiaa, joista vähintään kaksi on tasolta III ylöspäin; kolme samanaikaisesti voimassa olevaa sopimusta vähintään kolmen valtion kanssa, molemmat sopimusmuodot ja vähintään +40 keskimääräiset suhteet 12 peräkkäisen kuukauden ajan; tai kahdeksan siirtokuntaa vähintään 70 prosentin keskivakaudella. Diplomaattisen voiton vuoden mittainen luottamuslaskuri nollautuu, jos yksikin ehto lakkaa täyttymästä. Tavoitteiden eteneminen näkyy komentosillalla.
 
 ## Tietosuoja ja tallennus
 
-Peli tallentuu selaimen localStorageen. Varmuuskopioi tilanne JSON-tiedostoksi tai tuo se takaisin myöhemmin; tiedostoa ei lähetetä mihinkään. Pelin siemen mahdollistaa saman lähtögalaksin luomisen uudelleen.
+Peli tallentuu selaimen localStorageen. Sivupalkki näyttää tallennuksen tilan ja viimeisimmän tallennetun vuoron. Varmuuskopioi tilanne JSON-tiedostoksi tai tuo se takaisin myöhemmin; tiedostoa ei lähetetä mihinkään. Jos selaimesta löytyy vioittunut tallenne, peli säilyttää alkuperäisen erillisenä palautuskopiona, jonka voi viedä Kronikka-näkymästä. Pelin siemen mahdollistaa saman lähtögalaksin luomisen uudelleen.
 
 ## Tekninen rakenne
 
 - src/ sisältää erilliset maailman, talouden, simulaation, toiminta-, tallennus- ja käyttöliittymämoduulit.
+- src/economy.js pitää resurssimuutokset tallennusrajojen sisällä kaikissa pelipalkinnoissa.
 - tests/ tarkistaa determinismin, resurssisäännöt, reitit, tapahtumat ja tallennusmuodon.
 - PLAN.md kuvaa arkkitehtuurin, vaiheet ja hyväksymiskriteerit.
 
 Ei ulkoisia JavaScript-kirjastoja, fonttipalveluja tai taustapalvelua.
+

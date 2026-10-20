@@ -1,4 +1,5 @@
 import { BUILDINGS, EVENTS, FACTIONS, POLICIES, TECHS } from "./data.js";
+import { applyResourceChanges } from "./economy.js";
 import { getSystem, ownedSystems } from "./world.js";
 
 export function hasTech(game, techId) {
@@ -39,7 +40,10 @@ export function buildingUpgrade(game, system, buildingId) {
   // Closed ecologies add a colony-wide bonus when the first farm appears;
   // subsequent farm levels only add their own base output.
   if (buildingId === "farm" && level === 0 && hasTech(game, "closed-ecologies")) output.food += 3;
-  return { level, cost, output, populationGrowth: buildingId === "habitat" ? 0.16 : 0 };
+  const populationGrowth = buildingId === "habitat"
+    ? (1 + (level + 1) * 0.16) / (1 + level * 0.16) - 1
+    : 0;
+  return { level, cost, output, populationGrowth };
 }
 
 export function defenseFleetCost(game) {
@@ -106,9 +110,7 @@ export function canAffordResources(game, cost) {
 }
 
 function spend(game, cost) {
-  Object.entries(cost).forEach(([key, amount]) => {
-    game.player.resources[key] = Math.max(0, game.player.resources[key] - amount);
-  });
+  applyResourceChanges(game.player.resources, Object.fromEntries(Object.entries(cost).map(([key, amount]) => [key, -amount])));
 }
 
 function addLog(game, type, title, text) {
@@ -309,9 +311,7 @@ export function resolveEvent(game, choiceId) {
   if (!eventChoiceAvailable(game, choice)) return fail("Valinnassa vaadittavaa resurssia ei ole riittävästi.");
 
   const effects = choice.effects;
-  Object.entries(effects.resources || {}).forEach(([key, amount]) => {
-    game.player.resources[key] = Math.max(0, game.player.resources[key] + amount);
-  });
+  applyResourceChanges(game.player.resources, effects.resources || {});
   if (effects.stability) {
     game.player.globalStability = Math.max(0, Math.min(100, game.player.globalStability + effects.stability));
     ownedSystems(game).forEach((system) => {
@@ -340,3 +340,4 @@ export function buildingFor(buildingId) {
 export function factionDefinition(factionId) {
   return FACTIONS.find((faction) => faction.id === factionId) || null;
 }
+

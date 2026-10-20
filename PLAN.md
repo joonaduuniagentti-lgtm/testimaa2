@@ -22,9 +22,9 @@ Tavoite ei ole yksi irrallinen näkymä vaan pelattava strategiasilmukka, jonka 
 - Neljä tutkimushaaraa ja 16 avattavaa teknologiaa.
 - Tutkimusretket, laivastojen reitit ja kuukausittainen liike.
 - Harvinainen, käsin kirjoitettu tähtilöytö, joka avaa oman tarinan ja pysyvän muiston.
-- Suhteet, kustannukselliset diplomaattiset lähetystöt, kauppasopimukset ja tutkimusliitot; liittovoitto vaatii kolmen sopimuksen, molempien sopimusmuotojen ja vähintään +40 keskimääräisen suhteen ylläpitämistä kuuden kuukauden ajan.
+- Suhteet, kustannukselliset diplomaattiset lähetystöt, kauppasopimukset ja tutkimusliitot; liittovoitto vaatii kolmen sopimuksen, molempien sopimusmuotojen ja vähintään +40 keskimääräisen suhteen ylläpitämistä 12 kuukauden ajan.
 - Kymmenen tapahtumakorttia valintoineen, mahdottoman maksutilanteen kriisipäätös, tapahtumaloki, resurssihistoria ja kolme mitattavaa voittoehtoa.
-- Paikallinen automaattitallennus, JSON-varmuuskopio ja turvallinen tuontivalidointi.
+- Paikallinen automaattitallennus, JSON-varmuuskopio, korruptoituneen tallennuksen palautuskopio ja syvä tuontivalidointi.
 - Responsiivinen komentokeskus, hiirellä/kosketuksella panoroitava ja zoomattava tähtikartta sekä graafit.
 
 ## Arkkitehtuuri
@@ -32,8 +32,9 @@ Tavoite ei ole yksi irrallinen näkymä vaan pelattava strategiasilmukka, jonka 
 - src/random.js: siemenpohjainen PRNG. Maailman luonti ja simulaatio ovat toistettavia.
 - src/world.js: staattiset määrittelyt ja 42 järjestelmän proseduraalinen generointi.
 - src/actions.js: pelaajan komennot, kustannus- ja kelpoisuussäännöt.
+- src/economy.js: rajatut resurssimuutokset, jotta tapahtumat ja löydöt eivät ylitä tallennusrajoja.
 - src/simulation.js: kuukauden siirtymä, talous, väestö, AI, laivueet, tapahtumat ja voitot.
-- src/storage.js: skeemaversioitu paikallistallennus sekä tuonti ja vienti.
+- src/storage.js: skeemaversioitu paikallistallennus, rikkinäisen tallennuksen palautuskopio sekä tuonti ja vienti.
 - src/galaxy-map.js: responsiivinen SVG-kartta, pan/zoom ja järjestelmän valinta.
 - src/charts.js: taloushistorian piirtäminen ilman ulkoisia kirjastoja.
 - src/view.js: saavutettava HTML-näkymä jokaiselle komentokeskuksen osalle.
@@ -60,7 +61,7 @@ Toteutus on riippumaton ulkoisista kirjastoista ja API-palveluista. Samaa puhdas
 - Komento ei kuluta resursseja, jos se hylätään; hyväksytty teko veloitetaan täsmälleen kerran.
 - Retkikunta etenee reittinsä mukaisesti ja paljastaa kohdejärjestelmän saapuessaan.
 - Kuukausi tuottaa tuloja, maksaa väestön ruoan, kasvattaa tutkimusta, vanhentaa sopimuksia ja tallentaa historiapisteen.
-- Tapahtumavalinta muuttaa pelitilaa, lukkiutunut maksutilanne voidaan aina ratkaista, ja voittoehdot syntyvät vain niitä vastaavista pelitilan arvoista; diplomaattinen voitto edellyttää kuutta peräkkäistä kelvollista kuukautta.
+- Tapahtumavalinta muuttaa pelitilaa, lukkiutunut maksutilanne voidaan aina ratkaista, ja voittoehdot syntyvät vain niitä vastaavista pelitilan arvoista; diplomaattinen voitto edellyttää 12 peräkkäistä kelvollista kuukautta.
 - Vienti voidaan tuoda takaisin; väärä tai rikkinäinen JSON, rikkinäiset historia- ja lokirivit tai käyttöliittymän tarvitsemattomat tiedot eivät korvaa käynnissä olevaa tallennusta.
 - Rakennusnäkymä näyttää seuraavan tason kustannuksen ja lisätuotannon; hintojen teknologiamuutokset näkyvät myös kartalla ja laivastoissa.
 - Kartan zoomaus ja pan pysyvät samoina näkymää uudelleen piirrettäessä.
@@ -73,3 +74,4 @@ Toteutus on riippumaton ulkoisista kirjastoista ja API-palveluista. Samaa puhdas
 - 42 järjestelmää ja vuoropohjainen eteneminen pitävät generoinnin ymmärrettävänä; peli ei yritä olla rajaton universumi.
 - Puolustus on strateginen rajapaineen ja varuskunnan voimavertailu, ei taktinen taisteluruutu. Alueiden valtaaminen tai sotilaallinen kampanja jää jatkokehitykseen.
 - SVG piirtää kartan ilman kolmannen osapuolen riippuvuuksia, joten projekti säilyy julkaistavana staattisena sivuna.
+

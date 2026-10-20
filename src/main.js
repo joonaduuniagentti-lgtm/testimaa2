@@ -3,23 +3,93 @@ import {
   beginExpedition, buildBuilding, buildColonyShip, buildFleet, colonizeSystem,
   moveFleet, proposeTreaty, resolveEvent, sendEnvoy, setPolicy, startResearch
 } from "./actions.js";
-import { createGame, getSystem } from "./world.js";
-import { loadGame, parseSave, saveGame, exportSave } from "./storage.js";
+import { createGame, getSystem, isValidSeed } from "./world.js";
+import { loadGame, parseSave, saveGame, exportSave, readStoredSaveText, preserveRecoverySave, readRecoverySave } from "./storage.js";
 import { mountGalaxyMap } from "./galaxy-map.js";
 import { renderApp } from "./view.js";
 
 const app = document.querySelector("#app");
-let game = loadGame() || createGame();
+let storage = null;
+try { storage = globalThis.localStorage; } catch (error) { /* The status panel will report unavailable storage. */ }
+const storedSave = readStoredSaveText(storage);
+const loadedGame = loadGame(storage);
+const corruptSaveText = storedSave.ok && storedSave.text !== null && !loadedGame ? storedSave.text : null;
+const recoveryWrite = corruptSaveText !== null ? preserveRecoverySave(corruptSaveText, storage) : null;
+let recoveryText = corruptSaveText ?? readRecoverySave(storage);
+let recoveryExported = false;
+let game = loadedGame || createGame();
 let toastTimer;
-saveGame(game);
+let persistenceState = {
+  status: "unknown",
+  savedTurn: loadedGame ? loadedGame.turn : null,
+  message: "",
+  recoveryAvailable: recoveryText !== null
+};
 
 function persist() {
-  const result = saveGame(game);
+  if (corruptSaveText !== null && !recoveryWrite?.ok && !recoveryExported) {
+    persistenceState = {
+      ...persistenceState,
+      status: "error",
+      message: "Virheellistä aiempaa tallennusta ei ole vielä saatu palautuskopioon. Vie palautuskopio ennen tallennuksen jatkamista."
+    };
+    return { ok: false, reason: persistenceState.message };
+  }
+  const result = saveGame(game, storage);
+  if (result.ok) {
+    persistenceState = { status: "saved", savedTurn: game.turn, message: "", recoveryAvailable: recoveryText !== null };
+  } else {
+    persistenceState = { ...persistenceState, status: "error", message: result.reason };
+  }
   if (!result.ok) game.ui.toast = result.reason;
+  return result;
+}
+
+if (corruptSaveText !== null && recoveryWrite?.ok) {
+  persistenceState.recoveryAvailable = true;
+  persistenceState = { ...persistenceState, status: "unknown" };
+}
+if (corruptSaveText !== null && !recoveryWrite?.ok) {
+  persistenceState.status = "error";
+  persistenceState.message = recoveryWrite?.reason || "Virheellinen tallennus löytyi, mutta sen palautuskopiota ei voitu vahvistaa.";
+  game.ui.toast = "Vanha tallennus on virheellinen. Vie palautuskopio kronikasta ennen kuin jatkat pelaamista.";
+} else {
+  persist();
+  if (corruptSaveText !== null) game.ui.toast = "Vanha tallennus oli virheellinen. Se säilytettiin palautuskopiona; voit viedä kopion kronikasta.";
+}
+
+const transientSelections = new Map();
+let focusDescriptor = null;
+
+function controlKey(element) {
+  return [element.dataset.field || "", element.dataset.fleet || "", element.dataset.action || "", element.dataset.id || ""].join("|");
+}
+
+function captureControls() {
+  app.querySelectorAll("select[data-field]").forEach((select) => {
+    transientSelections.set(controlKey(select), select.value);
+  });
+  const active = document.activeElement;
+  if (active && app.contains(active) && [...active.attributes].some((attribute) => attribute.name.startsWith("data-"))) {
+    focusDescriptor = [...active.attributes]
+      .filter((attribute) => attribute.name.startsWith("data-"))
+      .map((attribute) => [attribute.name, attribute.value]);
+  } else {
+    focusDescriptor = null;
+  }
 }
 
 function render() {
-  app.innerHTML = renderApp(game);
+  captureControls();
+  app.innerHTML = renderApp(game, persistenceState);
+  app.querySelectorAll("select[data-field]").forEach((select) => {
+    const savedValue = transientSelections.get(controlKey(select));
+    if (savedValue !== undefined && [...select.options].some((option) => option.value === savedValue)) select.value = savedValue;
+  });
+  if (focusDescriptor) {
+    const match = [...app.querySelectorAll("*")].find((element) => focusDescriptor.every(([name, value]) => element.getAttribute(name) === value));
+    if (match && !match.disabled) match.focus({ preventScroll: true });
+  }
   app.querySelectorAll("[data-map-root]").forEach((root) => {
     mountGalaxyMap(root, game, (systemId, viaKeyboard) => {
       game.ui.selectedSystemId = systemId;
@@ -38,10 +108,14 @@ function notify(message) {
   game.ui.toast = message;
   persist();
   render();
+  scheduleToastDismissal();
+}
+
+function scheduleToastDismissal() {
   window.clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => {
     game.ui.toast = "";
-    render();
+    app.querySelector(".toast-message")?.remove();
   }, 3200);
 }
 
@@ -55,7 +129,12 @@ function createFreshGame() {
   const entered = window.prompt("Anna galaksin siemen. Jätä tyhjäksi satunnaista galaksia varten.", "");
   if (entered === null) return;
   const seed = entered.trim() || "KANTAMA-" + new Date().toISOString().replace(/[-:.TZ]/g, "");
-  game = createGame(seed);
+  if (!isValidSeed(seed)) return notify("Siemen saa sisältää enintään 128 merkkiä. Nykyinen galaksi säilyi.");
+  try {
+    game = createGame(seed);
+  } catch (error) {
+    return notify("Galaksia ei voitu luoda. Tarkista siemenen pituus.");
+  }
   persist();
   render();
   notify("Uusi galaksi luotiin siemenellä " + seed + ".");
@@ -73,6 +152,23 @@ function downloadSave() {
   link.remove();
   URL.revokeObjectURL(url);
   notify("Tallennus vietiin JSON-tiedostoon.");
+}
+
+function downloadRecoverySave() {
+  const data = recoveryText ?? readRecoverySave(storage);
+  if (data === null) return notify("Palautuskopiota ei löytynyt selaimen muistista.");
+  const blob = new Blob([data], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "kantama-palautuskopio.json";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  recoveryExported = true;
+  persistenceState.recoveryAvailable = true;
+  notify("Aiempi tallennus vietiin palautuskopioksi.");
 }
 
 async function importSave(input) {
@@ -129,8 +225,9 @@ function runAction(button) {
     return resultToast(action === "build-new-fleet" ? buildFleet(game, yard) : buildColonyShip(game, yard));
   }
   if (action === "export") return downloadSave();
+  if (action === "export-recovery") return downloadRecoverySave();
   if (action === "save") {
-    const result = saveGame(game);
+    const result = persist();
     return notify(result.ok ? "Galaksi tallennettiin tähän selaimeen." : result.reason);
   }
   if (action === "new-game") return createFreshGame();
@@ -170,3 +267,5 @@ app.addEventListener("change", (event) => {
 });
 
 render();
+if (game.ui.toast) scheduleToastDismissal();
+

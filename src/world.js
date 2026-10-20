@@ -127,7 +127,12 @@ function initialHistory(game) {
   };
 }
 
+export function isValidSeed(seed) {
+  return typeof seed === "string" && seed.trim().length > 0 && seed.length <= 128;
+}
+
 export function createGame(seed = "KANTAMA-01") {
+  if (!isValidSeed(seed)) throw new RangeError("Galaksin siemenen tulee olla 1–128 merkkiä pitkä.");
   const world = generateGalaxy(seed);
   const relations = Object.fromEntries(FACTIONS.map((faction) => [faction.id, faction.baseRelation]));
   const game = {
@@ -180,3 +185,4 @@ export function systemDistance(game, leftId, rightId) {
   if (!left || !right) return Infinity;
   return distance(left, right);
 }
+

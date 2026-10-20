@@ -2,6 +2,7 @@ import { BUILDINGS, EVENTS, FACTIONS, SCREEN_DEFS, TECHS } from "./data.js";
 import { ACCORD_REQUIRED_MONTHS } from "./simulation.js";
 
 export const SAVE_KEY = "kantama.save.v1";
+export const RECOVERY_SAVE_KEY = "kantama.save.v1.recovery";
 const RESOURCE_KEYS = ["credits", "alloys", "food", "fuel", "influence", "science"];
 
 function isObject(value) {
@@ -37,6 +38,7 @@ export function validateSave(game) {
     return { ok: false, reason: "Simulaation satunnaistila tai tapahtuma-ajastus on virheellinen." };
   }
   if (typeof game.gameOver !== "boolean" || typeof game.paused !== "boolean") return { ok: false, reason: "Pelin tila on virheellinen." };
+  if (game.gameOver !== Boolean(game.victory)) return { ok: false, reason: "Pelin päättymistila ja voittoarkisto eivät täsmää." };
   if (RESOURCE_KEYS.some((key) => !validNumber(game.player.resources[key], 0, 99999) || !Number.isFinite(game.player.net[key]))) {
     return { ok: false, reason: "Yksi tai useampi resurssiarvo on virheellinen." };
   }
@@ -45,23 +47,26 @@ export function validateSave(game) {
   const expectedFactionIds = new Set(FACTIONS.map((faction) => faction.id));
   if (factionIds.size !== FACTIONS.length || [...factionIds].some((id) => !expectedFactionIds.has(id))) return { ok: false, reason: "Valtioiden tunnisteet eivät täsmää peliversioon." };
   for (const faction of game.factions) {
-    if (!isObject(faction) || !["name", "short", "motto", "color", "style", "description"].every((key) => typeof faction[key] === "string") || !validNumber(faction.power, 0, 99999) || !validNumber(faction.treasury, 0, 99999) || !validNumber(faction.expansion, 0, 10) || !validNumber(faction.trade, 0, 10) || !validNumber(faction.research, 0, 10) || typeof faction.mood !== "string" || !Number.isInteger(faction.lastMove) || !Array.isArray(faction.treaties)) {
+    const definition = FACTIONS.find((item) => item.id === faction?.id);
+    const staticFields = ["name", "short", "motto", "color", "style", "description", "baseRelation", "expansion", "trade", "research"];
+    if (!isObject(faction) || !definition || staticFields.some((key) => faction[key] !== definition[key]) || !validNumber(faction.power, 0, 99999) || !validNumber(faction.treasury, 0, 99999) || typeof faction.mood !== "string" || !Number.isInteger(faction.lastMove) || !Array.isArray(faction.treaties)) {
       return { ok: false, reason: "Valtion tiedoista puuttuu käyttöliittymän tai simulaation tarvitsemia arvoja." };
     }
   }
 
   const systemIds = new Set();
-  for (const system of game.systems) {
+  for (const [index, system] of game.systems.entries()) {
     if (!isObject(system) || typeof system.id !== "string" || typeof system.name !== "string" || typeof system.planetName !== "string" || typeof system.planetType !== "string" || !Array.isArray(system.neighbors) || !isObject(system.buildings)) {
       return { ok: false, reason: "Galaksin järjestelmätiedot ovat virheelliset." };
     }
+    if (system.id !== "sys-" + String(index + 1).padStart(2, "0")) return { ok: false, reason: "Järjestelmätunniste ei vastaa galaksin rakennetta." };
     const invalidBuilding = Object.entries(system.buildings).some(([buildingId, level]) => {
       const building = BUILDINGS.find((candidate) => candidate.id === buildingId);
       return !building || !Number.isInteger(level) || level < 0 || level > building.maxLevel;
     });
     if (invalidBuilding) return { ok: false, reason: "Järjestelmän rakennustiedot ovat virheelliset." };
     if (systemIds.has(system.id)) return { ok: false, reason: "Galaksissa on päällekkäisiä järjestelmätunnisteita." };
-    if (!validNumber(system.x, 0, 1100) || !validNumber(system.y, 0, 760) || !validNumber(system.habitability, 0, 1) || !validNumber(system.mineral, 0, 1) || !validNumber(system.richness, 0, 1)) {
+    if (system.number !== index + 1 || !validNumber(system.x, 0, 1100) || !validNumber(system.y, 0, 760) || !validNumber(system.habitability, 0, 1) || !validNumber(system.mineral, 0, 1) || !validNumber(system.richness, 0, 1)) {
       return { ok: false, reason: "Järjestelmän ominaisarvot ovat virheelliset." };
     }
     if (![null, "player", ...factionIds].includes(system.owner) || typeof system.discovered !== "boolean" || typeof system.colony !== "boolean" || Boolean(system.owner) !== system.colony) return { ok: false, reason: "Järjestelmän omistajuus tai kartoitustila on virheellinen." };
@@ -86,7 +91,9 @@ export function validateSave(game) {
   const techIds = new Set(TECHS.map((tech) => tech.id));
   if (new Set(game.player.technologies).size !== game.player.technologies.length || game.player.technologies.some((id) => !techIds.has(id))) return { ok: false, reason: "Tutkittujen teknologioiden tunnisteet ovat virheelliset." };
   if (game.player.researchId !== null && !techIds.has(game.player.researchId)) return { ok: false, reason: "Aktiivisen tutkimuksen tunnistetta ei löydy." };
-  if (!validNumber(game.player.researchProgress, 0) || !validNumber(game.player.globalStability, 0, 100) || !Number.isInteger(game.player.colonyShips) || game.player.colonyShips < 0 || (game.player.accordProgress !== undefined && (!Number.isInteger(game.player.accordProgress) || game.player.accordProgress < 0 || game.player.accordProgress > ACCORD_REQUIRED_MONTHS))) return { ok: false, reason: "Valtion tutkimus-, vakaus-, diplomatia- tai asutusalusarvo on virheellinen." };
+  if (!validNumber(game.player.researchProgress, 0) || !validNumber(game.player.globalStability, 0, 100) || !Number.isInteger(game.player.colonyShips) || game.player.colonyShips < 0 || !Number.isInteger(game.player.colonizationBonus) || game.player.colonizationBonus < 0 || game.player.colonizationBonus > 9999 || (game.player.accordProgress !== undefined && (!Number.isInteger(game.player.accordProgress) || game.player.accordProgress < 0 || game.player.accordProgress > ACCORD_REQUIRED_MONTHS))) return { ok: false, reason: "Valtion tutkimus-, vakaus-, diplomatia- tai asutusalusarvo on virheellinen." };
+  const activeResearch = TECHS.find((tech) => tech.id === game.player.researchId);
+  if ((activeResearch && (game.player.researchProgress >= activeResearch.cost || game.player.technologies.includes(activeResearch.id))) || (!activeResearch && game.player.researchProgress !== 0)) return { ok: false, reason: "Tutkimuksen edistyminen ylittää hankkeen tai sillä ei ole aktiivista hanketta." };
   for (const [id, amount] of Object.entries(game.player.researchProgressById)) {
     const tech = TECHS.find((candidate) => candidate.id === id);
     if (!tech || !validNumber(amount, 0, tech.cost)) return { ok: false, reason: "Tallennettu tutkimusedistyminen on virheellinen." };
@@ -97,7 +104,7 @@ export function validateSave(game) {
 
   const fleetIds = new Set();
   for (const fleet of game.player.fleets) {
-    if (!isObject(fleet) || typeof fleet.id !== "string" || fleetIds.has(fleet.id) || !systemIds.has(fleet.systemId) || !Array.isArray(fleet.path) || fleet.path.some((id) => !systemIds.has(id))) {
+    if (!isObject(fleet) || typeof fleet.id !== "string" || !/^[a-z0-9-]{1,80}$/.test(fleet.id) || fleetIds.has(fleet.id) || !systemIds.has(fleet.systemId) || !Array.isArray(fleet.path) || fleet.path.some((id) => !systemIds.has(id))) {
       return { ok: false, reason: "Laivastotiedot tai reitti ovat virheelliset." };
     }
     if (!["survey", "defense"].includes(fleet.role) || !Number.isInteger(fleet.ships) || fleet.ships < 1 || !Number.isFinite(fleet.strength) || fleet.strength < 0) return { ok: false, reason: "Laivaston kokoonpano on virheellinen." };
@@ -108,6 +115,7 @@ export function validateSave(game) {
       routeOrigin = stepId;
     }
     if (fleet.path.length && fleet.destination !== routeOrigin) return { ok: false, reason: "Laivaston määränpää ei vastaa sen reittiä." };
+    if (!fleet.path.length && fleet.destination !== null) return { ok: false, reason: "Pysähtyneellä laivastolla ei voi olla keskeneräistä määränpäätä." };
     fleetIds.add(fleet.id);
   }
 
@@ -122,6 +130,37 @@ export function validateSave(game) {
   if (game.victory !== null && (!isObject(game.victory) || !["knowledge", "accord", "frontier"].includes(game.victory.id) || typeof game.victory.title !== "string" || typeof game.victory.detail !== "string" || !validDate(game.victory))) return { ok: false, reason: "Voiton arkistomerkintä on virheellinen." };
   if (!isObject(game.factionWorlds) || [...factionIds].some((id) => !Array.isArray(game.factionWorlds[id]) || new Set(game.factionWorlds[id]).size !== game.factionWorlds[id].length || game.factionWorlds[id].some((systemId) => !systemIds.has(systemId) || game.systems.find((system) => system.id === systemId).owner !== id))) return { ok: false, reason: "Valtioiden tähtialueet ovat virheelliset." };
   return { ok: true, reason: "" };
+}
+
+export function readStoredSaveText(storage) {
+  try {
+    const activeStorage = storage ?? globalThis.localStorage;
+    if (!activeStorage) return { ok: false, text: null };
+    return { ok: true, text: activeStorage.getItem(SAVE_KEY) };
+  } catch (error) {
+    return { ok: false, text: null };
+  }
+}
+
+export function preserveRecoverySave(text, storage) {
+  try {
+    const activeStorage = storage ?? globalThis.localStorage;
+    if (!activeStorage || typeof text !== "string") return { ok: false, reason: "Palautuskopiota ei voitu valmistella." };
+    activeStorage.setItem(RECOVERY_SAVE_KEY, text);
+    if (activeStorage.getItem(RECOVERY_SAVE_KEY) !== text) return { ok: false, reason: "Palautuskopion tarkistus epäonnistui." };
+    return { ok: true, reason: "" };
+  } catch (error) {
+    return { ok: false, reason: "Palautuskopiota ei voitu kirjoittaa selaimen muistiin." };
+  }
+}
+
+export function readRecoverySave(storage) {
+  try {
+    const activeStorage = storage ?? globalThis.localStorage;
+    return activeStorage?.getItem(RECOVERY_SAVE_KEY) ?? null;
+  } catch (error) {
+    return null;
+  }
 }
 
 export function loadGame(storage) {
@@ -170,3 +209,4 @@ export function parseSave(text) {
     return { ok: false, reason: "Tiedosto ei sisällä kelvollista JSON-tallennusta." };
   }
 }
+

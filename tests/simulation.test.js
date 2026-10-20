@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { BUILDINGS, EVENTS, TECHS } from "../src/data.js";
-import { beginExpedition, buildBuilding, envoyCost, eventChoiceAvailable, fleetTravelMonths, proposeTreaty, resolveEvent, sendEnvoy, shortestRoute, startResearch, treatyCost, EMERGENCY_EVENT_CHOICE_ID } from "../src/actions.js";
+import { beginExpedition, buildBuilding, envoyCost, eventChoiceAvailable, fleetTravelMonths, moveFleet, proposeTreaty, resolveEvent, sendEnvoy, shortestRoute, startResearch, treatyCost, EMERGENCY_EVENT_CHOICE_ID } from "../src/actions.js";
 import { ACCORD_REQUIRED_MONTHS, advanceMonth, borderPressureReport, estimatedColonyIncome, evaluateVictory } from "../src/simulation.js";
-import { createGame, generateGalaxy, getSystem, ownedSystems } from "../src/world.js";
-import { exportSave, parseSave, saveGame, loadGame, validateSave } from "../src/storage.js";
+import { createGame, generateGalaxy, getSystem, isValidSeed, ownedSystems } from "../src/world.js";
+import { exportSave, parseSave, saveGame, loadGame, preserveRecoverySave, readRecoverySave, SAVE_KEY, validateSave } from "../src/storage.js";
 
 function resolvePendingEvent(game) {
   if (!game.event) return;
@@ -277,6 +277,46 @@ test("the rare signal resolves once and becomes a permanent relic", () => {
   assert.ok(game.log.some((entry) => entry.title === "Harvinainen löytö: Kantaman muistijälki"));
 });
 
+test("an adaptive map reveal does not consume the relic before a survey fleet visits it", () => {
+  const game = createGame("relic-after-reveal");
+  const relicSite = game.systems.find((system) => system.anomaly === "Kantaman muistijälki");
+  const scout = game.player.fleets.find((fleet) => fleet.role === "survey");
+  assert.ok(relicSite && scout);
+
+  // Adaptive maps can reveal a nearby system ahead of the fleet's physical arrival.
+  game.player.technologies.push("adaptive-maps");
+  game.systems.forEach((system) => { system.discovered = true; });
+  const route = shortestRoute(game, scout.systemId, relicSite.id);
+  assert.ok(route?.length);
+  assert.equal(moveFleet(game, scout.id, relicSite.id).ok, true);
+  tick(game, route.length + 1);
+
+  assert.deepEqual(game.player.relics, ["kantama-echo"]);
+  assert.ok(game.log.some((entry) => entry.title === "Harvinainen löytö: Kantaman muistijälki"));
+  assert.equal(validateSave(game).ok, true);
+});
+
+test("event and relic rewards clamp every resource at the stock limit", () => {
+  const game = createGame("reward-stock-cap");
+  game.event = { id: "drift-capsule", turn: game.turn };
+  game.player.resources.science = 99_990;
+  game.player.resources.influence = 99_999;
+  assert.equal(resolveEvent(game, "decode").ok, true);
+  assert.equal(game.player.resources.science, 99_999);
+  assert.equal(game.player.resources.influence, 99_999);
+
+  const relicGame = createGame("relic-stock-cap");
+  const relicSite = relicGame.systems.find((system) => system.anomaly === "Kantaman muistijälki");
+  const scout = relicGame.player.fleets.find((fleet) => fleet.role === "survey");
+  relicGame.systems.forEach((system) => { system.discovered = true; });
+  Object.keys(relicGame.player.resources).forEach((key) => { relicGame.player.resources[key] = 99_999; });
+  const route = shortestRoute(relicGame, scout.systemId, relicSite.id);
+  assert.equal(moveFleet(relicGame, scout.id, relicSite.id).ok, true);
+  tick(relicGame, route.length + 1);
+  assert.ok(Object.values(relicGame.player.resources).every((value) => value <= 99_999));
+  assert.equal(validateSave(relicGame).ok, true);
+});
+
 test("save export, import, and browser storage round-trip the complete state", () => {
   const game = createGame("archive-test");
   tick(game, 4);
@@ -315,11 +355,46 @@ test("save export, import, and browser storage round-trip the complete state", (
   brokenLogText.log[0].text = null;
   assert.equal(validateSave(brokenLogText).ok, false);
   const brokenAccordProgress = structuredClone(game);
-  brokenAccordProgress.player.accordProgress = 7;
+  brokenAccordProgress.player.accordProgress = ACCORD_REQUIRED_MONTHS + 1;
   assert.equal(validateSave(brokenAccordProgress).ok, false);
   const legacySave = structuredClone(game);
   delete legacySave.player.accordProgress;
   assert.equal(validateSave(legacySave).ok, true);
+
+  const missingColonizationBonus = structuredClone(game);
+  delete missingColonizationBonus.player.colonizationBonus;
+  assert.equal(validateSave(missingColonizationBonus).ok, false);
+  const overrunResearch = structuredClone(game);
+  overrunResearch.player.researchId = "survey-lattices";
+  overrunResearch.player.researchProgress = 999;
+  assert.equal(validateSave(overrunResearch).ok, false);
+  const completedButActiveResearch = structuredClone(game);
+  completedButActiveResearch.player.researchId = "survey-lattices";
+  completedButActiveResearch.player.researchProgress = TECHS.find((tech) => tech.id === "survey-lattices").cost;
+  assert.equal(validateSave(completedButActiveResearch).ok, false);
+  const inconsistentVictory = structuredClone(game);
+  inconsistentVictory.gameOver = true;
+  inconsistentVictory.victory = null;
+  assert.equal(validateSave(inconsistentVictory).ok, false);
+  const injectedFactionColor = structuredClone(game);
+  injectedFactionColor.factions[0].color = '#ffffff" onload="alert(1)';
+  assert.equal(validateSave(injectedFactionColor).ok, false);
+  assert.equal(parseSave(exportSave(injectedFactionColor)).ok, false);
+  const injectedSystemId = structuredClone(game);
+  injectedSystemId.systems[0].id = 'sys-01" onmouseover="alert(1)';
+  assert.equal(validateSave(injectedSystemId).ok, false);
+
+  assert.equal(isValidSeed("s".repeat(128)), true);
+  assert.equal(isValidSeed("s".repeat(129)), false);
+  assert.throws(() => createGame("s".repeat(129)), /128 merkkiä/);
+
+  const damagedRawSave = "{malformed saved game";
+  memory.set(SAVE_KEY, damagedRawSave);
+  assert.deepEqual(preserveRecoverySave(damagedRawSave, storage), { ok: true, reason: "" });
+  assert.equal(readRecoverySave(storage), damagedRawSave);
+  assert.equal(memory.get(SAVE_KEY), damagedRawSave, "the original bytes remain until a recovery copy exists");
+  assert.deepEqual(preserveRecoverySave("", storage), { ok: true, reason: "" });
+  assert.equal(readRecoverySave(storage), "");
 });
 
 test("each victory route is derived from actual state", () => {
@@ -342,7 +417,7 @@ test("each victory route is derived from actual state", () => {
   assert.equal(evaluateVictory(weakAccord), null);
 
   const growingAccord = createGame("sustained-victory-accord");
-  growingAccord.player.treaties = growingAccord.factions.slice(0, 3).map((faction, index) => ({ factionId: faction.id, type: index === 0 ? "research" : "trade", remaining: 12 }));
+  growingAccord.player.treaties = growingAccord.factions.slice(0, 3).map((faction, index) => ({ factionId: faction.id, type: index === 0 ? "research" : "trade", remaining: ACCORD_REQUIRED_MONTHS + 1 }));
   Object.keys(growingAccord.player.relations).forEach((id) => { growingAccord.player.relations[id] = 50; });
   growingAccord.nextEventTurn = 100;
   tick(growingAccord, ACCORD_REQUIRED_MONTHS - 1);
@@ -351,6 +426,7 @@ test("each victory route is derived from actual state", () => {
   tick(growingAccord, 1);
   assert.equal(growingAccord.player.accordProgress, ACCORD_REQUIRED_MONTHS);
   assert.equal(growingAccord.victory.id, "accord");
+  assert.equal(ACCORD_REQUIRED_MONTHS, 12, "diplomacy must be maintained for a full year");
 
   const frontier = createGame("victory-frontier");
   for (const system of frontier.systems.filter((item) => !item.owner).slice(0, 7)) {
@@ -362,3 +438,4 @@ test("each victory route is derived from actual state", () => {
   assert.equal(ownedSystems(frontier).length, 8);
   assert.equal(evaluateVictory(frontier).id, "frontier");
 });
+
